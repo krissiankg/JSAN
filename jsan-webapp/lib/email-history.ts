@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export interface EmailCampaignLog {
   id: string;
   created_by: string | null;
-  campaign_kind: 'broadcast' | 'test' | 'account';
+  campaign_kind: 'broadcast' | 'test' | 'account' | 'newsletter' | 'blog';
   template_key: string;
   audience_label: string | null;
   recipient_count: number;

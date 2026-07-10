@@ -14,6 +14,8 @@ export const config = {
     '/register',
     '/inscriptions-fermees',
     '/maintenance',
+    '/blog',
+    '/blog/:path*',
     '/api/:path*',
   ],
 };

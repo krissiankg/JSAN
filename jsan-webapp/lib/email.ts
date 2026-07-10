@@ -67,8 +67,9 @@ export function renderNotificationEmail(params: {
   ctaLabel?: string;
   ctaUrl?: string;
   recipientName?: string | null;
+  footerNote?: string;
 }): string {
-  const { title, body, ctaLabel, ctaUrl, recipientName } = params;
+  const { title, body, ctaLabel, ctaUrl, recipientName, footerNote } = params;
   const greeting = recipientName ? `Bonjour ${escapeHtml(recipientName)},` : 'Bonjour,';
   const cta =
     ctaLabel && ctaUrl
@@ -94,8 +95,10 @@ export function renderNotificationEmail(params: {
         </td></tr>
         <tr><td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;">
           <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;">
-            Vous recevez cet e-mail car vous avez un compte sur la plateforme JSAN 2025.
-            Vous pouvez ajuster vos préférences de notification dans votre profil.
+            ${escapeHtml(
+              footerNote ??
+                'Vous recevez cet e-mail car vous avez un compte sur la plateforme JSAN 2025. Vous pouvez ajuster vos préférences de notification dans votre profil.'
+            )}
           </p>
         </td></tr>
       </table>

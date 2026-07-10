@@ -11,6 +11,7 @@ import type { DbUserRole } from '@/lib/roles';
 const MAINTENANCE_EXEMPT_PREFIXES = [
   '/maintenance',
   '/inscriptions-fermees',
+  '/blog',
   '/_next',
   '/media/',
   '/favicon.ico',
@@ -19,7 +20,7 @@ const MAINTENANCE_EXEMPT_PREFIXES = [
 const MAINTENANCE_EXEMPT_EXACT = new Set(['/login']);
 
 const MAINTENANCE_WEBHOOK_PREFIXES = ['/api/kkiapay/webhook'];
-const MAINTENANCE_API_EXEMPT = ['/api/registrations/status'];
+const MAINTENANCE_API_EXEMPT = ['/api/registrations/status', '/api/newsletter/subscribe'];
 
 function isMaintenanceExemptPath(pathname: string): boolean {
   if (MAINTENANCE_EXEMPT_EXACT.has(pathname)) return true;

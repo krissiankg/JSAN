@@ -6,7 +6,8 @@ export type EmailTemplateCategory =
   | 'evaluations'
   | 'paiements'
   | 'programme'
-  | 'documents';
+  | 'documents'
+  | 'blog';
 
 export type EmailTemplateKey =
   | 'account_registration'
@@ -36,7 +37,9 @@ export type EmailTemplateKey =
   | 'student_document_rejected'
   | 'member_document_approved'
   | 'member_document_rejected'
-  | 'attestation_available';
+  | 'attestation_available'
+  | 'blog_post_published'
+  | 'newsletter_campaign';
 
 export interface EmailTemplateDefinition {
   key: EmailTemplateKey;
@@ -404,6 +407,29 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
       'Bonjour {{prenom}}, votre document « {{nom_document}} » est maintenant disponible au téléchargement sur la plateforme.',
     defaultCtaLabel: 'Télécharger le document',
   },
+  {
+    key: 'blog_post_published',
+    category: 'blog',
+    label: 'Nouvel article de blog',
+    description: 'Envoyé aux abonnés newsletter lors de la publication d’un article.',
+    variables: ['titre_article', 'extrait_article', 'lien_article', 'nom_evenement'],
+    defaultSubject: 'Nouvel article JSAN : {{titre_article}}',
+    defaultTitle: 'Nouvel article publié',
+    defaultBody:
+      'Un nouvel article vient d’être publié sur le blog JSAN : « {{titre_article}} ». {{extrait_article}}',
+    defaultCtaLabel: 'Lire l’article',
+  },
+  {
+    key: 'newsletter_campaign',
+    category: 'blog',
+    label: 'Campagne newsletter',
+    description: 'Message libre envoyé à tous les abonnés newsletter.',
+    variables: ['message_newsletter', 'lien_plateforme', 'nom_evenement'],
+    defaultSubject: 'Actualités JSAN',
+    defaultTitle: 'Newsletter JSAN',
+    defaultBody: '{{message_newsletter}}',
+    defaultCtaLabel: 'En savoir plus',
+  },
 ];
 
 export const EMAIL_TEMPLATE_CATEGORY_LABELS: Record<EmailTemplateCategory, string> = {
@@ -413,6 +439,7 @@ export const EMAIL_TEMPLATE_CATEGORY_LABELS: Record<EmailTemplateCategory, strin
   paiements: 'Paiements & justificatifs',
   programme: 'Programme, annonces & rappels',
   documents: 'Documents & attestations',
+  blog: 'Blog & newsletter',
 };
 
 export const EMAIL_TEMPLATE_DEFINITIONS_BY_KEY: Record<EmailTemplateKey, EmailTemplateDefinition> =
@@ -528,6 +555,10 @@ export function sampleVariablesForTemplate(key: EmailTemplateKey): Record<string
     lien_paiement: 'https://pay.example.com/transaction',
     lien_attestation: 'https://example.com/dashboard/attestations/123',
     nom_document: 'Attestation de participation',
+    titre_article: 'Retour sur les JSAN 2025',
+    extrait_article: 'Découvrez les temps forts et les prochaines étapes de la communauté scientifique JSAN.',
+    lien_article: 'https://example.com/blog/retour-jsan-2025',
+    message_newsletter: 'Le comité d’organisation partage une mise à jour importante avec la communauté JSAN.',
   };
 
   const definition = EMAIL_TEMPLATE_DEFINITIONS_BY_KEY[key];

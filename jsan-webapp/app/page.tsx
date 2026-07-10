@@ -13,6 +13,9 @@ export default function Home() {
   const registrationsOpen = useRegistrationsOpen();
   const supabase = useMemo(() => createClient(), []);
   const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, action?: () => void }>({ show: false, message: '' });
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterNotice, setNewsletterNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [sponsors, setSponsors] = useState<EventSponsor[]>([]);
   const tickets = [
     { id: 1, title: 'Membre SNB - Étudiant', desc: 'Accès étudiant pour les membres actifs de la SNB.', price: '10 000 FCFA', img: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=400', category: 'Membre SNB' },
@@ -56,6 +59,35 @@ export default function Home() {
     window.location.href = '/dashboard/billetterie';
   };
 
+  const handleNewsletterSubscribe = async () => {
+    const email = newsletterEmail.trim();
+    if (!email) {
+      setNewsletterNotice({ type: 'error', text: 'Saisissez votre adresse e-mail.' });
+      return;
+    }
+
+    setNewsletterLoading(true);
+    setNewsletterNotice(null);
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'footer' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setNewsletterNotice({ type: 'error', text: data.message || 'Inscription impossible.' });
+        return;
+      }
+      setNewsletterEmail('');
+      setNewsletterNotice({ type: 'success', text: data.message || 'Inscription confirmée !' });
+    } catch {
+      setNewsletterNotice({ type: 'error', text: 'Erreur réseau. Réessayez.' });
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
   useEffect(() => {
     async function loadSponsors() {
       const rows = await fetchSponsors(supabase, { activeOnly: true });
@@ -84,6 +116,7 @@ export default function Home() {
         <Link href="#participer">Participer</Link>
         <Link href="#tarifs">Tarifs</Link>
         <Link href="#partenaires">Partenaires</Link>
+        <Link href="/blog">Blog</Link>
         <Link href="#faq">FAQ</Link>
         <div className="nav-cta-mobile hidden-desktop">
           {isLoggedIn ? (
@@ -619,9 +652,51 @@ export default function Home() {
       <span className="copyright hidden-mobile">© 2025 SNB · JSAN. Tous droits réservés.</span>
       <div className="newsletter-inline">
         <span className="newsletter-text hidden-mobile">S'INSCRIRE À NOTRE NEWSLETTER</span>
-        <input type="email" name="newsletter-email" id="global-newsletter-email" placeholder="Votre e-mail..." aria-label="Votre e-mail pour la newsletter" autoComplete="email" />
-        <button className="btn btn-primary btn-sm">→</button>
+        <input
+          type="email"
+          name="newsletter-email"
+          id="global-newsletter-email"
+          placeholder="Votre e-mail..."
+          aria-label="Votre e-mail pour la newsletter"
+          autoComplete="email"
+          value={newsletterEmail}
+          onChange={(e) => setNewsletterEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void handleNewsletterSubscribe();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={newsletterLoading}
+          onClick={() => void handleNewsletterSubscribe()}
+          aria-label="S'inscrire à la newsletter"
+        >
+          {newsletterLoading ? '…' : '→'}
+        </button>
       </div>
+      {newsletterNotice && (
+        <span
+          style={{
+            position: 'fixed',
+            bottom: '72px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            background: newsletterNotice.type === 'success' ? '#166534' : '#b91c1c',
+            color: '#fff',
+            padding: '8px 14px',
+            borderRadius: '999px',
+            fontSize: '13px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          }}
+        >
+          {newsletterNotice.text}
+        </span>
+      )}
       <Link href="#faq" className="bottom-contact-link" onClick={(e) => window.goToSlide(9)}>Contact</Link>
     </div>
   </div>
