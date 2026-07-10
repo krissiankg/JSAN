@@ -80,9 +80,14 @@ export default function DashboardEventHero({
         </div>
       )}
 
-      <a href={PROGRAMME_DOWNLOAD_URL} download className="dashboard-event-hero__download">
-        <span>📥</span> Télécharger le programme
-      </a>
+      <div className="dashboard-event-hero__actions">
+        <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', flex: 1, minWidth: '200px' }}>
+          Plateforme officielle JSAN — suivi scientifique, billetterie et communications.
+        </p>
+        <a href={PROGRAMME_DOWNLOAD_URL} download className="dashboard-event-hero__download">
+          <span>📥</span> Télécharger le programme
+        </a>
+      </div>
     </div>
   );
 }

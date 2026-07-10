@@ -390,7 +390,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Footer */}
-          <div className="dashboard-footer" style={{ position: 'relative', bottom: 0, marginTop: 'auto', padding: '20px 0', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
+          <div className="dashboard-footer" style={{ marginTop: '24px', padding: '16px 0', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
             Journées Scientifiques de l'Alimentation et de la Nutrition (JSAN) 2025 - Version 1.0.0
           </div>
         </div>

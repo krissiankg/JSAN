@@ -73,7 +73,7 @@ export default function ParticipantDashboard({
         accentColor={accentColor ?? welcome.accentColor}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+      <div className="dashboard-stats-row dashboard-stats-row--3">
         <div className="dashboard-stat-card">
           <div className="dashboard-stat-card__label">📅 ÉVÉNEMENT</div>
           <div className="dashboard-stat-card__value">{eventConfig?.nom_evenement ?? 'JSAN 2025'}</div>

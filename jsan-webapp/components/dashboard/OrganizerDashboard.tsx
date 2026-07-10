@@ -49,7 +49,7 @@ export default function OrganizerDashboard({ userRole }: { userRole: import('@/l
         accentColor={welcome.accentColor}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '15px' }}>
+      <div className={`dashboard-stats-row${isOrganisateur ? '' : ' dashboard-stats-row--3'}`}>
         <div className="dashboard-stat-card">
           <div className="dashboard-stat-card__label">Nombre d&apos;auteurs</div>
           <div className="dashboard-stat-card__number">305</div>
@@ -70,27 +70,27 @@ export default function OrganizerDashboard({ userRole }: { userRole: import('@/l
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+      <div className="dashboard-charts-grid">
         <div className="dashboard-panel">
           <h2 className="dashboard-panel__title" style={{ fontSize: '14px', marginBottom: '15px' }}>Auteurs par Pays</h2>
-          <div style={{ width: '100%', height: '250px' }}>
+          <div className="dashboard-chart-box">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={countryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', fontSize: '12px' }} />
-                <Bar dataKey="auteurs" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="auteurs" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={36} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
         <div className="dashboard-panel">
           <h2 className="dashboard-panel__title" style={{ fontSize: '14px', marginBottom: '15px' }}>Soumissions par Thématique (%)</h2>
-          <div style={{ width: '100%', height: '250px' }}>
+          <div className="dashboard-chart-box">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={themeData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                <Pie data={themeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
                   {themeData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -101,16 +101,16 @@ export default function OrganizerDashboard({ userRole }: { userRole: import('@/l
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="dashboard-panel" style={{ gridColumn: '1 / -1' }}>
+        <div className="dashboard-panel dashboard-charts-grid__full">
           <h2 className="dashboard-panel__title" style={{ fontSize: '14px', marginBottom: '15px' }}>Chercheurs par Institution</h2>
-          <div style={{ width: '100%', height: '250px' }}>
+          <div className="dashboard-chart-box">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={institutionData} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#111827' }} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#111827' }} width={110} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '12px' }} />
-                <Bar dataKey="chercheurs" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                <Bar dataKey="chercheurs" fill="#10b981" radius={[0, 4, 4, 0]} barSize={22} />
               </BarChart>
             </ResponsiveContainer>
           </div>
