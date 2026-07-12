@@ -83,7 +83,7 @@ npm install
 npm run dev
 ```
 
-L'application est disponible sur [http://localhost:3000](http://localhost:3000).
+L'application est disponible sur [https://snb-jsan.bj/](https://snb-jsan.bj/).
 
 ### Variables d'environnement
 
