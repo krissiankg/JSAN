@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isEmailConfigured, renderNotificationEmail, sendEmail } from '@/lib/email';
 import { fetchEmailTemplateConfig, renderEmailTemplate, type EmailTemplateKey } from '@/lib/email-templates';
+import { resolveEmailCtaUrl } from '@/lib/email-template-links';
 import { isEventStaff, mapDbRoleToAppRole, type DbUserRole } from '@/lib/roles';
 
 type AllowedAccountTemplateKey = 'account_registration' | 'account_email_confirmation' | 'account_welcome';
@@ -91,7 +92,11 @@ export async function POST(request: Request) {
   }
 
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim() || new URL(request.url).origin;
-  const ctaUrl = link ? `${base.replace(/\/$/, '')}${link}` : base;
+  const ctaUrl = resolveEmailCtaUrl(base, {
+    templateKey,
+    variables,
+    overrideLink: link,
+  });
   const recipientName = [profile?.prenom, profile?.nom].filter(Boolean).join(' ') || null;
   const roleLabel =
     profile?.role === 'pair_en_attente'

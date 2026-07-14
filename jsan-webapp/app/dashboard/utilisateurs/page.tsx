@@ -15,9 +15,10 @@ import {
   profileDocumentTypeLabel,
   formatProfileDocDate,
 } from '@/lib/profile-documents';
+import TableScroll from '@/components/dashboard/TableScroll';
 import {
   type StaffUserRow,
-  fetchAllUsersForStaff,
+  fetchStaffUsersWithEmails,
   updateUserRole,
   dbRoleToSelectValue,
   selectValueToDbRole,
@@ -52,11 +53,20 @@ export default function GestionUtilisateurs() {
     setMessage(null);
     try {
       const [usersData, pendingData] = await Promise.all([
-        fetchAllUsersForStaff(supabase),
+        fetchStaffUsersWithEmails(),
         fetchPendingProfileDocuments(supabase),
       ]);
+      const emailById = new Map(usersData.map((u) => [u.id, u.email ?? null]));
       setUsers(usersData);
-      setPendingRows(pendingData);
+      setPendingRows(
+        pendingData.map((row) => ({
+          ...row,
+          user: {
+            ...row.user,
+            email: emailById.get(row.user.id) ?? null,
+          },
+        }))
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur de chargement.';
       const hint = msg.includes('profile_documents')
@@ -101,19 +111,25 @@ export default function GestionUtilisateurs() {
     );
   }
 
-  const matchesSearch = (prenom: string | null, nom: string | null, phone: string | null) => {
+  const matchesSearch = (
+    prenom: string | null,
+    nom: string | null,
+    phone: string | null,
+    email?: string | null
+  ) => {
     const q = searchTerm.toLowerCase();
     if (!q) return true;
     return (
       (prenom ?? '').toLowerCase().includes(q) ||
       (nom ?? '').toLowerCase().includes(q) ||
-      (phone ?? '').toLowerCase().includes(q)
+      (phone ?? '').toLowerCase().includes(q) ||
+      (email ?? '').toLowerCase().includes(q)
     );
   };
 
-  const filteredUsers = users.filter((u) => matchesSearch(u.prenom, u.nom, u.telephone));
+  const filteredUsers = users.filter((u) => matchesSearch(u.prenom, u.nom, u.telephone, u.email));
   const filteredPending = pendingRows.filter((r) =>
-    matchesSearch(r.user.prenom, r.user.nom, r.user.telephone)
+    matchesSearch(r.user.prenom, r.user.nom, r.user.telephone, (r.user as StaffUserRow).email)
   );
 
   const getUserStatus = (user: StaffUserRow) => {
@@ -180,7 +196,7 @@ export default function GestionUtilisateurs() {
               <span style={{ color: '#94a3b8', marginRight: '8px', fontSize: '14px' }}>🔍</span>
               <input
                 type="text"
-                placeholder="Rechercher par nom ou téléphone…"
+                placeholder="Rechercher par nom, e-mail ou téléphone…"
                 style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', width: '100%', color: '#333' }}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -232,6 +248,7 @@ export default function GestionUtilisateurs() {
             <p style={{ color: '#64748b', padding: '24px 0' }}>Aucun justificatif en attente de validation.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
+              <TableScroll minWidth={720}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #f1f5f9', color: '#94a3b8', fontSize: '12px' }}>
@@ -247,7 +264,9 @@ export default function GestionUtilisateurs() {
                     <tr key={row.document.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '16px' }}>
                         <div style={{ fontWeight: 600, color: '#111', fontSize: '14px' }}>{formatUserDisplayName(row.user)}</div>
-                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{getRoleLabelFromDb(row.user.role)}</div>
+                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                          {row.user.email ?? getRoleLabelFromDb(row.user.role)}
+                        </div>
                       </td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#475569' }}>
                         {profileDocumentTypeLabel(row.document.document_type)}
@@ -269,19 +288,22 @@ export default function GestionUtilisateurs() {
                   ))}
                 </tbody>
               </table>
+              </TableScroll>
             </div>
           )
         ) : (
           <div style={{ overflowX: 'auto' }}>
+            <TableScroll minWidth={860}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #f1f5f9', color: '#94a3b8', fontSize: '12px' }}>
-                  <th style={{ padding: '16px', fontWeight: 500 }}>Utilisateur</th>
-                  <th style={{ padding: '16px', fontWeight: 500 }}>Téléphone</th>
-                  <th style={{ padding: '16px', fontWeight: 500 }}>Rôle</th>
-                  <th style={{ padding: '16px', fontWeight: 500 }}>Justificatif</th>
-                  <th style={{ padding: '16px', fontWeight: 500 }}>Inscription</th>
-                </tr>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9', color: '#94a3b8', fontSize: '12px' }}>
+                    <th style={{ padding: '16px', fontWeight: 500 }}>Utilisateur</th>
+                    <th style={{ padding: '16px', fontWeight: 500 }}>E-mail</th>
+                    <th style={{ padding: '16px', fontWeight: 500 }}>Téléphone</th>
+                    <th style={{ padding: '16px', fontWeight: 500 }}>Rôle</th>
+                    <th style={{ padding: '16px', fontWeight: 500 }}>Justificatif</th>
+                    <th style={{ padding: '16px', fontWeight: 500 }}>Inscription</th>
+                  </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((user) => {
@@ -304,6 +326,9 @@ export default function GestionUtilisateurs() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 600, color: '#111', fontSize: '14px' }}>{formatUserDisplayName(user)}</div>
+                            {!user.prenom && !user.nom && user.email && (
+                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Nom non renseigné</div>
+                            )}
                             {pendingUserIds.has(user.id) && (
                               <button
                                 type="button"
@@ -312,13 +337,22 @@ export default function GestionUtilisateurs() {
                                   if (row) setSelectedVerification(row);
                                   setActiveTab('pending');
                                 }}
-                                style={{ fontSize: '12px', color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '4px' }}
+                                style={{ fontSize: '12px', color: '#1B6B2E', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '4px' }}
                               >
                                 ↗ Voir justificatif en attente
                               </button>
                             )}
                           </div>
                         </div>
+                      </td>
+                      <td style={{ padding: '16px', color: '#475569', fontSize: '13px' }}>
+                        {user.email ? (
+                          <a href={`mailto:${user.email}`} style={{ color: '#1B6B2E', textDecoration: 'none' }}>
+                            {user.email}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td style={{ padding: '16px', color: '#475569', fontSize: '14px' }}>{user.telephone ?? '—'}</td>
                       <td style={{ padding: '16px' }}>
@@ -354,6 +388,7 @@ export default function GestionUtilisateurs() {
                 })}
               </tbody>
             </table>
+            </TableScroll>
           </div>
         )}
       </div>
@@ -378,7 +413,7 @@ export default function GestionUtilisateurs() {
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '16px', color: '#1e293b' }}>{formatUserDisplayName(selectedVerification.user)}</div>
                   <div style={{ color: '#64748b', fontSize: '13px' }}>
-                    {selectedVerification.user.telephone ?? 'Pas de téléphone'} • Inscrit le {formatRegistrationDate(selectedVerification.user.created_at)}
+                    {(selectedVerification.user as StaffUserRow).email ?? 'Pas d’e-mail'} • {selectedVerification.user.telephone ?? 'Pas de téléphone'} • Inscrit le {formatRegistrationDate(selectedVerification.user.created_at)}
                   </div>
                 </div>
               </div>
@@ -402,7 +437,7 @@ export default function GestionUtilisateurs() {
                   )}
                 </div>
                 {previewUrl && (
-                  <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '8px', fontSize: '13px', color: '#3b82f6' }}>
+                  <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '8px', fontSize: '13px', color: '#1B6B2E' }}>
                     Ouvrir dans un nouvel onglet
                   </a>
                 )}

@@ -13,6 +13,7 @@ import {
   formatCoAuthors,
 } from '@/lib/abstracts';
 import { getAbstractFileSignedUrl } from '@/lib/abstract-files';
+import TableScroll from '@/components/dashboard/TableScroll';
 
 export default function MesResumesSoumis() {
   const { user } = useAuth();
@@ -125,7 +126,8 @@ export default function MesResumesSoumis() {
           <p style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Chargement…</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
+            <TableScroll minWidth={900}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ color: '#94a3b8', borderBottom: '1px solid #f1f5f9' }}>
                   {visibleColumns.id && <th onClick={() => handleSort('id')} style={{ paddingBottom: '10px', fontWeight: 500, cursor: 'pointer', fontSize: '12px' }}>Identité{renderSortIndicator('id')}</th>}
@@ -162,7 +164,7 @@ export default function MesResumesSoumis() {
                             <button
                               type="button"
                               onClick={() => handleDownload(filePath)}
-                              style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: 'pointer', fontSize: '12px' }}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#1B6B2E', cursor: 'pointer', fontSize: '12px' }}
                             >
                               📄 {fileName}
                             </button>
@@ -183,7 +185,7 @@ export default function MesResumesSoumis() {
                       )}
                       {visibleColumns.date && <td style={{ padding: '12px 0', textAlign: 'right', color: '#64748b', fontSize: '13px', verticalAlign: 'top' }}>{formatAbstractDate(item.created_at)}</td>}
                       <td style={{ padding: '12px 0', textAlign: 'right', verticalAlign: 'top' }}>
-                        <Link href={`/dashboard/mes-resumes/${item.id}`} style={{ fontSize: '12px', color: '#2563eb', fontWeight: 500, textDecoration: 'none' }}>
+                        <Link href={`/dashboard/mes-resumes/${item.id}`} style={{ fontSize: '12px', color: '#1B6B2E', fontWeight: 500, textDecoration: 'none' }}>
                           Voir →
                         </Link>
                       </td>
@@ -193,12 +195,13 @@ export default function MesResumesSoumis() {
                 {sortedData.length === 0 && (
                   <tr>
                     <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                      Aucun résumé soumis. <Link href="/dashboard/nouvelle-soumission" style={{ color: '#2563eb' }}>Créer une soumission</Link>
+                      Aucun résumé soumis. <Link href="/dashboard/nouvelle-soumission" style={{ color: '#1B6B2E' }}>Créer une soumission</Link>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            </TableScroll>
           </div>
         )}
       </div>

@@ -15,6 +15,7 @@ import {
   usersByRole,
   paymentsByStatus,
   revenueByTicket,
+  usersByCountry,
   type ReportsData,
   type ChartDatum,
 } from '@/lib/reports';
@@ -23,7 +24,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
-const PALETTE = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+const PALETTE = ['#1B6B2E', '#10b981', '#f59e0b', '#3D8A4F', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 
 export default function AdminRapports() {
   const { userRole } = useAuth();
@@ -65,12 +66,13 @@ export default function AdminRapports() {
   const roleData = usersByRole(data);
   const paymentData = paymentsByStatus(data);
   const revenueData = revenueByTicket(data);
+  const countryData = usersByCountry(data);
 
   const isEmpty =
     kpis.soumissions === 0 && kpis.utilisateurs === 0 && kpis.billetsPayes === 0;
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="page-shell page-shell--wide" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Rapports &amp; Statistiques</h1>
@@ -93,10 +95,10 @@ export default function AdminRapports() {
 
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
-        <KpiCard label="Soumissions" value={kpis.soumissions} accent="#2563eb" />
+        <KpiCard label="Soumissions" value={kpis.soumissions} accent="#1B6B2E" />
         <KpiCard label="Taux d'acceptation" value={kpis.tauxAcceptation != null ? `${kpis.tauxAcceptation}%` : '—'} accent="#10b981" sub={`${kpis.acceptes} acceptés · ${kpis.rejetes} rejetés`} />
         <KpiCard label="En cours d'évaluation" value={kpis.enCours} accent="#f59e0b" />
-        <KpiCard label="Manuscrits" value={kpis.manuscrits} accent="#8b5cf6" />
+        <KpiCard label="Manuscrits" value={kpis.manuscrits} accent="#3D8A4F" />
         <KpiCard label="Évaluations complétées" value={kpis.evaluationsCompletes} accent="#06b6d4" sub={kpis.tauxCompletionEval != null ? `${kpis.tauxCompletionEval}% du total` : undefined} />
         <KpiCard label="Utilisateurs" value={kpis.utilisateurs} accent="#0f172a" sub={`${kpis.evaluateursValides} évaluateurs validés`} />
         <KpiCard label="Billets payés" value={kpis.billetsPayes} accent="#16a34a" />
@@ -106,11 +108,11 @@ export default function AdminRapports() {
       {/* Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
         <ChartCard title="Résumés par statut">
-          <BarPanel data={statusData} color="#2563eb" />
+          <BarPanel data={statusData} color="#1B6B2E" />
         </ChartCard>
 
         <ChartCard title="Résumés par thématique">
-          <BarPanel data={themeData} color="#8b5cf6" />
+          <BarPanel data={themeData} color="#3D8A4F" />
         </ChartCard>
 
         <ChartCard title="Évaluations">
@@ -123,6 +125,10 @@ export default function AdminRapports() {
 
         <ChartCard title="Utilisateurs par rôle">
           <BarPanel data={roleData} color="#f59e0b" />
+        </ChartCard>
+
+        <ChartCard title="Utilisateurs par pays">
+          <BarPanel data={countryData} color="#1B6B2E" />
         </ChartCard>
 
         <ChartCard title="Statut des paiements">

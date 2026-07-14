@@ -64,6 +64,7 @@ export default function AdminProgramme() {
   const [reminderAudience, setReminderAudience] = useState<ReminderAudience>('all');
   const [reminderNote, setReminderNote] = useState('');
   const [sendingReminder, setSendingReminder] = useState(false);
+  const [notifyingProgram, setNotifyingProgram] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,6 +149,7 @@ export default function AdminProgramme() {
       setMessage({ type: 'error', text: 'Le titre de la session est obligatoire.' });
       return;
     }
+    const isFirstSession = editingId === 'new' && sessions.length === 0;
     setSaving(true);
     const err =
       editingId === 'new'
@@ -162,7 +164,49 @@ export default function AdminProgramme() {
     setMessage({ type: 'success', text: editingId === 'new' ? 'Session ajoutée.' : 'Session mise à jour.' });
     closeForm();
     await load();
+
+    if (isFirstSession) {
+      void fetch('/api/notify/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateKey: 'program_published',
+          audience: 'all',
+          link: '/dashboard/programme',
+          variables: { nom_evenement: 'JSAN 2025' },
+        }),
+      });
+    }
+
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const notifyProgramUpdated = async () => {
+    if (!confirm('Envoyer une notification « Programme mis à jour » à tous les utilisateurs ?')) return;
+    setNotifyingProgram(true);
+    const response = await fetch('/api/notify/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        templateKey: 'program_updated',
+        audience: 'all',
+        link: '/dashboard/programme',
+        variables: {
+          nom_evenement: 'JSAN 2025',
+          message_special: 'Consultez les dernières modifications du programme.',
+        },
+      }),
+    });
+    const result = (await response.json().catch(() => null)) as { ok?: boolean; sent?: number; error?: string } | null;
+    setNotifyingProgram(false);
+    if (!response.ok || !result?.ok) {
+      setMessage({ type: 'error', text: result?.error || 'Notification impossible.' });
+      return;
+    }
+    setMessage({
+      type: 'success',
+      text: `Notification envoyée à ${result.sent ?? 0} utilisateur(s).`,
+    });
   };
 
   const handleDelete = async (s: AgendaSession) => {
@@ -240,7 +284,7 @@ export default function AdminProgramme() {
   };
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="page-shell" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Programme &amp; Sessions</h1>
@@ -250,13 +294,23 @@ export default function AdminProgramme() {
           </p>
         </div>
         {!editingId && (
-          <button
-            type="button"
-            onClick={openNew}
-            style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-          >
-            + Nouvelle session
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={notifyProgramUpdated}
+              disabled={notifyingProgram || sessions.length === 0}
+              style={{ background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '11px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', cursor: sessions.length === 0 ? 'not-allowed' : 'pointer', opacity: sessions.length === 0 ? 0.6 : 1 }}
+            >
+              {notifyingProgram ? 'Envoi…' : 'Notifier : programme mis à jour'}
+            </button>
+            <button
+              type="button"
+              onClick={openNew}
+              style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              + Nouvelle session
+            </button>
+          </div>
         )}
       </div>
 
@@ -296,7 +350,7 @@ export default function AdminProgramme() {
           <div style={{ fontSize: '46px', marginBottom: '10px' }}>📅</div>
           <p style={{ color: '#64748b', margin: '0 0 16px' }}>Aucune session pour le moment.</p>
           {!editingId && (
-            <button type="button" onClick={openNew} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+            <button type="button" onClick={openNew} style={{ background: '#1B6B2E', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
               Créer la première session
             </button>
           )}
@@ -414,13 +468,13 @@ function SessionCard({
                 const provider = resolveSessionVisioProvider(session);
                 if (!visioUrl) return null;
                 return (
-                  <a href={visioUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
+                  <a href={visioUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#1B6B2E', fontWeight: 600, textDecoration: 'none' }}>
                     {visioProviderIcon(provider)} {provider ? VISIO_PROVIDER_LABELS[provider] : 'Visio'} — lien
                   </a>
                 );
               })()}
               {linked.length > 0 && (
-                <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600 }}>
+                <span style={{ fontSize: '12px', color: '#C9A010', fontWeight: 600 }}>
                   📄 {linked.length} résumé{linked.length > 1 ? 's' : ''} présenté{linked.length > 1 ? 's' : ''}
                 </span>
               )}
@@ -434,7 +488,7 @@ function SessionCard({
             )}
           </div>
           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-            <button type="button" onClick={onReminder} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Rappel</button>
+            <button type="button" onClick={onReminder} style={{ background: '#E8F5EC', color: '#145224', border: '1px solid #B7DFC0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Rappel</button>
             <button type="button" onClick={onEdit} style={{ background: '#f1f5f9', color: '#334155', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Modifier</button>
             <button type="button" onClick={onDelete} style={{ background: 'transparent', color: '#b91c1c', border: '1px solid #fca5a5', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
           </div>
@@ -575,7 +629,7 @@ function SessionForm({
 
       {/* Résumés présentés */}
       <div style={{ marginTop: '18px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
-        <button type="button" onClick={onToggleAbstracts} style={{ background: 'transparent', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '13px', cursor: 'pointer', padding: 0 }}>
+        <button type="button" onClick={onToggleAbstracts} style={{ background: 'transparent', border: 'none', color: '#1B6B2E', fontWeight: 600, fontSize: '13px', cursor: 'pointer', padding: 0 }}>
           {showAbstracts ? '▾' : '▸'} Rattacher des résumés acceptés ({form.abstracts_inclus.length} sélectionné{form.abstracts_inclus.length > 1 ? 's' : ''})
         </button>
         {showAbstracts && (

@@ -5,7 +5,6 @@ import Script from 'next/script';
 import { useAuth } from '../../AuthContext';
 import { isEventStaff } from '@/lib/roles';
 import { createClient } from '@/lib/supabase/client';
-import { getKkiapayPublicKey, isKkiapaySandbox } from '@/lib/kkiapay';
 import {
   TICKET_CATALOG,
   type TicketCatalogItem,
@@ -18,6 +17,7 @@ import {
   formatEventDates,
   type EventConfig,
 } from '@/lib/tickets';
+import { notifyPaymentPending } from '@/lib/notifications';
 
 type BilletterieTab = 'boutique' | 'mes-billets' | 'comptabilite';
 
@@ -33,11 +33,24 @@ export default function BilletteriePage() {
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [allTickets, setAllTickets] = useState<TicketRegistration[]>([]);
   const [customAlert, setCustomAlert] = useState<{ show: boolean; message: string; action?: () => void }>({ show: false, message: '' });
+  const [kkiapayPublicKey, setKkiapayPublicKey] = useState('');
+  const [kkiapaySandbox, setKkiapaySandbox] = useState(true);
 
-  const kkiapayPublicKey = getKkiapayPublicKey();
   const widgetReady = useRef(false);
   // Billet en attente pendant l'ouverture du widget (les listeners Kkiapay sont globaux).
   const pendingTicketRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    void fetch('/api/kkiapay/public-config')
+      .then((res) => res.json())
+      .then((data: { publicKey?: string; sandbox?: boolean }) => {
+        setKkiapayPublicKey((data.publicKey ?? '').trim());
+        setKkiapaySandbox(data.sandbox !== false);
+      })
+      .catch(() => {
+        setKkiapayPublicKey('');
+      });
+  }, []);
 
   const loadTickets = useCallback(async () => {
     if (!user) return;
@@ -145,13 +158,19 @@ export default function BilletteriePage() {
         return;
       }
 
+      void notifyPaymentPending(supabase, user.id, {
+        typeBillet: ticket.title,
+        montant: ticket.amount,
+        paymentLink: '/dashboard/billetterie',
+      });
+
       await loadTickets();
       pendingTicketRef.current = created.id;
       registerKkiapayListeners();
       window.openKkiapayWidget({
         amount: ticket.amount,
         key: kkiapayPublicKey,
-        sandbox: isKkiapaySandbox(),
+        sandbox: kkiapaySandbox,
         data: JSON.stringify({ ticketId: created.id }),
       });
       return;
@@ -170,6 +189,11 @@ export default function BilletteriePage() {
       montant: ticket.amount,
       statut_paiement: 'En_Attente',
     });
+    void notifyPaymentPending(supabase, user.id, {
+      typeBillet: ticket.title,
+      montant: ticket.amount,
+      paymentLink: link,
+    });
     await loadTickets();
 
     window.open(link, '_blank', 'noopener,noreferrer');
@@ -185,7 +209,7 @@ export default function BilletteriePage() {
     borderRadius: '8px',
     border: 'none',
     background: activeTab === tab ? '#ffffff' : 'transparent',
-    color: activeTab === tab ? '#2563eb' : '#64748b',
+    color: activeTab === tab ? '#1B6B2E' : '#64748b',
     fontWeight: activeTab === tab ? 600 : 500,
     boxShadow: activeTab === tab ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
     cursor: 'pointer' as const,
@@ -217,7 +241,7 @@ export default function BilletteriePage() {
           ) : myTickets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px' }}>
               <p style={{ color: '#64748b', marginBottom: '16px' }}>Aucun billet pour le moment.</p>
-              <button onClick={() => setActiveTab('boutique')} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={() => setActiveTab('boutique')} style={{ background: '#1B6B2E', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
                 Voir les billets disponibles
               </button>
             </div>
@@ -261,9 +285,9 @@ export default function BilletteriePage() {
             <img src="/media/media_library/jsan_event_banner.jpg" alt="JSAN" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.2))' }} />
             <div style={{ position: 'absolute', bottom: '32px', left: '32px', color: 'white' }}>
-              <h1 style={{ fontSize: '28px', margin: '0 0 8px', fontWeight: 700 }}>{eventConfig?.nom_evenement ?? 'JSAN 2025'}</h1>
+              <h1 style={{ fontSize: '28px', margin: '0 0 8px', fontWeight: 700 }}>{eventConfig?.nom_evenement ?? 'Événement'}</h1>
               <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                📅 {formatEventDates(eventConfig?.date_debut ?? '2025-06-10', eventConfig?.date_fin ?? '2025-06-14')}
+                📅 {formatEventDates(eventConfig?.date_debut ?? null, eventConfig?.date_fin ?? null)}
                 {' · '}📍 Palais des Congrès, Cotonou
               </div>
             </div>
@@ -349,7 +373,7 @@ export default function BilletteriePage() {
             <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
               <button
                 onClick={() => { setCustomAlert({ show: false, message: '' }); customAlert.action?.(); }}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', background: '#1B6B2E', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
               >
                 Compris
               </button>

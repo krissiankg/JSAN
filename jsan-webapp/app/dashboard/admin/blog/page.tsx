@@ -12,9 +12,12 @@ import {
   createBlogPost,
   fetchAllBlogPosts,
   formatBlogDate,
+  stripBlogHtml,
   updateBlogPost,
 } from '@/lib/blog';
 import { fetchNewsletterSubscriberStats } from '@/lib/newsletter';
+import BlogRichEditor from '@/components/blog/BlogRichEditor';
+import BlogCoverImageField from '@/components/blog/BlogCoverImageField';
 
 const EMPTY_FORM: BlogPostInput = {
   title: '',
@@ -129,7 +132,7 @@ export default function AdminBlogPage() {
   };
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) {
+    if (!form.title.trim() || !stripBlogHtml(form.content)) {
       setMessage({ type: 'error', text: 'Titre et contenu requis.' });
       return;
     }
@@ -217,7 +220,7 @@ export default function AdminBlogPage() {
   }
 
   return (
-    <div style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="page-shell page-shell--wide" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: '0 0 8px', fontSize: '1.5rem' }}>Blog & Newsletter</h1>
@@ -273,11 +276,10 @@ export default function AdminBlogPage() {
               value={form.slug}
               onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
             />
-            <input
-              style={inputStyle}
-              placeholder="URL image de couverture (optionnel)"
+            <BlogCoverImageField
               value={form.cover_image_url ?? ''}
-              onChange={(e) => setForm((f) => ({ ...f, cover_image_url: e.target.value }))}
+              onChange={(cover_image_url) => setForm((f) => ({ ...f, cover_image_url }))}
+              supabase={supabase}
             />
             <textarea
               style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
@@ -285,11 +287,12 @@ export default function AdminBlogPage() {
               value={form.excerpt}
               onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
             />
-            <textarea
-              style={{ ...inputStyle, minHeight: '220px', resize: 'vertical' }}
-              placeholder="Contenu (paragraphes séparés par une ligne vide)"
-              value={form.content}
-              onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+            <BlogRichEditor
+              key={editingId ?? 'editor'}
+              content={form.content}
+              onChange={(content) => setForm((f) => ({ ...f, content }))}
+              supabase={supabase}
+              placeholder="Rédigez le contenu de l’article…"
             />
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <label style={{ fontSize: '14px' }}>

@@ -18,7 +18,14 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
       </header>
       <main className="blog-main">{children}</main>
       <footer className="blog-footer">
-        <p>© {new Date().getFullYear()} SNB · JSAN — <Link href="/">snb-jsan.bj</Link></p>
+        <p>
+          © {new Date().getFullYear()} SNB · JSAN — Version 2.0
+          {' · '}
+          Conçu par{' '}
+          <a href="https://guelichweb.online/" target="_blank" rel="noopener noreferrer">
+            Guelichweb
+          </a>
+        </p>
       </footer>
     </div>
   );

@@ -64,7 +64,7 @@ export const SPONSOR_LEVEL_COLORS: Record<SponsorLevel, string> = {
   or: '#ca8a04',
   argent: '#64748b',
   bronze: '#b45309',
-  media: '#2563eb',
+  media: '#1B6B2E',
   partenaire: '#10b981',
 };
 

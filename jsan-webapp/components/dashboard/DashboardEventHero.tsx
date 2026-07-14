@@ -21,12 +21,12 @@ export default function DashboardEventHero({
   spaceLabel,
   displayName,
   welcomeSubtitle,
-  accentColor = '#2563eb',
+  accentColor = '#1B6B2E',
 }: DashboardEventHeroProps) {
   const supabase = createClient();
   const [eventName, setEventName] = useState("Journées Scientifiques de l'Alimentation et de la Nutrition");
-  const [dateDebut, setDateDebut] = useState('2025-06-10');
-  const [dateFin, setDateFin] = useState('2025-06-14');
+  const [dateDebut, setDateDebut] = useState<string | null>(null);
+  const [dateFin, setDateFin] = useState<string | null>(null);
 
   const showWelcome = Boolean(spaceLabel && displayName);
 
@@ -38,8 +38,8 @@ export default function DashboardEventHero({
         .limit(1)
         .maybeSingle();
       if (data?.nom_evenement) setEventName(data.nom_evenement);
-      if (data?.date_debut) setDateDebut(data.date_debut);
-      if (data?.date_fin) setDateFin(data.date_fin);
+      setDateDebut(data?.date_debut ?? null);
+      setDateFin(data?.date_fin ?? null);
     }
     load();
   }, [supabase]);

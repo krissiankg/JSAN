@@ -9,6 +9,7 @@ import {
   type MessageThread,
   type StaffContactProfile,
   avatarUrl,
+  createDraftThread,
   fetchUserMessages,
   formatMessageTime,
   formatMessageTimestamp,
@@ -59,14 +60,21 @@ export default function MessageriePage() {
     try {
       const [messages, staff] = await Promise.all([
         fetchUserMessages(supabase, user.id),
-        getStaffContactProfile(supabase),
+        getStaffContactProfile(supabase, user.id),
       ]);
       setStaffContact(staff);
       const grouped = groupMessagesIntoThreads(messages, user.id);
-      setThreads(grouped);
+      setThreads((prev) => {
+        // Garde les brouillons locaux non encore pourvus de messages en base
+        const drafts = prev.filter(
+          (t) => t.messages.length === 0 && !grouped.some((g) => g.otherUserId === t.otherUserId)
+        );
+        return [...drafts, ...grouped];
+      });
       setActiveThreadId((current) => {
-        if (current && grouped.some((t) => t.id === current)) return current;
-        return grouped[0]?.id ?? null;
+        if (!current) return grouped[0]?.id ?? null;
+        // Conserve la sélection (brouillon ou conversation déjà chargée)
+        return current;
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erreur de chargement.';
@@ -119,16 +127,23 @@ export default function MessageriePage() {
 
   const startWithStaff = () => {
     if (!staffContact) {
-      setError('Secrétariat indisponible. Lancez npm run seed:users.');
+      setError('Aucun contact secrétariat trouvé. Créez un compte organisateur ou superadmin.');
       return;
     }
+
     const exists = threads.find((t) => t.otherUserId === staffContact.id);
     if (exists) {
       setActiveThreadId(exists.id);
-    } else {
-      setError('Envoyez un premier message via le champ ci-dessous après avoir sélectionné le comité.');
+      setError(null);
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
     }
+
+    const draft = createDraftThread(staffContact);
+    setThreads((prev) => [draft, ...prev]);
+    setActiveThreadId(draft.id);
     setError(null);
+    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   const filteredThreads = threads.filter((t) => {
@@ -142,6 +157,11 @@ export default function MessageriePage() {
     );
   });
 
+  const hasSearch = Boolean(search.trim());
+  const emptyListMessage = hasSearch
+    ? `Aucun résultat pour « ${search.trim()} ».`
+    : 'Aucune conversation.';
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 340px) minmax(0, 1fr)', gap: '0', height: 'calc(100vh - 130px)', minHeight: '520px', background: '#f1f5f9', borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
       {/* Colonne conversations */}
@@ -151,12 +171,26 @@ export default function MessageriePage() {
             <span style={{ color: '#94a3b8' }}>🔍</span>
             <input
               type="text"
-              placeholder="Rechercher un message..."
+              placeholder="Rechercher une conversation…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ background: 'transparent', border: 'none', outline: 'none', width: '100%', fontSize: '13px', color: '#334155' }}
+              disabled={threads.length === 0}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                width: '100%',
+                fontSize: '13px',
+                color: '#334155',
+                opacity: threads.length === 0 ? 0.55 : 1,
+              }}
             />
           </div>
+          {threads.length === 0 && !loading && (
+            <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#94a3b8', lineHeight: 1.4 }}>
+              La recherche s’active dès qu’une conversation existe.
+            </p>
+          )}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -164,15 +198,39 @@ export default function MessageriePage() {
             <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '24px' }}>Chargement…</p>
           ) : filteredThreads.length === 0 ? (
             <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-              <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 12px' }}>Aucune conversation.</p>
-              {staffContact && (
-                <button type="button" onClick={startWithStaff} style={{ fontSize: '12px', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}>
+              <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 12px' }}>{emptyListMessage}</p>
+              {!hasSearch && staffContact && (
+                <button
+                  type="button"
+                  onClick={startWithStaff}
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#1B6B2E',
+                    background: '#E8F5EC',
+                    border: '1px solid #B7DFC0',
+                    borderRadius: '999px',
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                  }}
+                >
                   Contacter le secrétariat →
                 </button>
               )}
-              <p style={{ fontSize: '11px', color: '#b45309', marginTop: '12px' }}>
-                Démo : <code>npm run seed:messages</code>
-              </p>
+              {!hasSearch && !staffContact && (
+                <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.45 }}>
+                  Aucun contact secrétariat lié. Dans Paramètres → Comité, associez un membre à un compte et cochez « Contact secrétariat ».
+                </p>
+              )}
+              {hasSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  style={{ fontSize: '12px', color: '#1B6B2E', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Effacer la recherche
+                </button>
+              )}
             </div>
           ) : (
             filteredThreads.map((conv) => {
@@ -242,20 +300,18 @@ export default function MessageriePage() {
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                title="Archiver (bientôt)"
-                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#94a3b8', fontSize: '16px' }}
-              >
-                🗑️
-              </button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
               {activeThread.messages.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '40px' }}>
-                  Aucun message dans cette conversation.
-                </p>
+                <div style={{ textAlign: 'center', marginTop: '48px', padding: '0 16px' }}>
+                  <p style={{ color: '#334155', fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>
+                    Nouvelle conversation
+                  </p>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>
+                    Écrivez votre premier message à {activeThread.otherUserName} ci-dessous.
+                  </p>
+                </div>
               ) : (
                 activeThread.messages.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
@@ -283,7 +339,7 @@ export default function MessageriePage() {
                         padding: '14px 18px',
                         borderRadius: '8px',
                         border: '1px solid #e2e8f0',
-                        background: isMe ? '#f8fafc' : '#ffffff',
+                        background: isMe ? '#E8F5EC' : '#ffffff',
                         fontSize: '14px',
                         color: '#334155',
                         lineHeight: 1.6,
@@ -337,7 +393,7 @@ export default function MessageriePage() {
                     padding: '10px 22px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: '#1e293b',
+                    background: '#1B6B2E',
                     color: '#fff',
                     fontWeight: 600,
                     fontSize: '13px',
@@ -352,8 +408,26 @@ export default function MessageriePage() {
             </div>
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '14px', padding: '24px' }}>
-            Sélectionnez une conversation dans la liste.
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#94a3b8', fontSize: '14px', padding: '24px' }}>
+            <p style={{ margin: 0 }}>Sélectionnez une conversation ou contactez le secrétariat.</p>
+            {staffContact && (
+              <button
+                type="button"
+                onClick={startWithStaff}
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#fff',
+                  background: '#1B6B2E',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                }}
+              >
+                Contacter le secrétariat
+              </button>
+            )}
           </div>
         )}
       </div>

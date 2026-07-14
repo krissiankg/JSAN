@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import DOMPurify from 'isomorphic-dompurify';
+
 export type BlogPostStatus = 'draft' | 'published' | 'archived';
 
 export interface BlogPost {
@@ -183,13 +185,51 @@ export function formatBlogDate(iso: string | null): string {
   });
 }
 
-export function renderBlogContentHtml(content: string): string {
+export function looksLikeBlogHtml(content: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(content.trim());
+}
+
+export function plainTextToBlogHtml(content: string): string {
   return content
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean)
     .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
     .join('');
+}
+
+export function normalizeBlogEditorContent(content: string): string {
+  if (!content.trim()) return '';
+  return looksLikeBlogHtml(content) ? content : plainTextToBlogHtml(content);
+}
+
+export function stripBlogHtml(content: string): string {
+  if (!content.trim()) return '';
+  const html = looksLikeBlogHtml(content) ? content : plainTextToBlogHtml(content);
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export function renderBlogContentHtml(content: string): string {
+  if (!content.trim()) return '';
+  const html = looksLikeBlogHtml(content) ? content : plainTextToBlogHtml(content);
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'h2', 'h3',
+      'ul', 'ol', 'li', 'a', 'img', 'span', 'blockquote', 'div',
+    ],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel', 'style', 'class'],
+    ALLOW_DATA_ATTR: false,
+  });
 }
 
 function escapeHtml(value: string): string {

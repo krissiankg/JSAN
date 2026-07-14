@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/app/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import DashboardEventHero from '@/components/dashboard/DashboardEventHero';
+import ProfileCompletenessBanner from '@/components/dashboard/ProfileCompletenessBanner';
 import { getDashboardWelcomeConfig, getDisplayName } from '@/lib/dashboard-welcome';
 import {
   type TicketRegistration,
@@ -73,12 +74,14 @@ export default function ParticipantDashboard({
         accentColor={accentColor ?? welcome.accentColor}
       />
 
+      <ProfileCompletenessBanner />
+
       <div className="dashboard-stats-row dashboard-stats-row--3">
         <div className="dashboard-stat-card">
           <div className="dashboard-stat-card__label">📅 ÉVÉNEMENT</div>
-          <div className="dashboard-stat-card__value">{eventConfig?.nom_evenement ?? 'JSAN 2025'}</div>
+          <div className="dashboard-stat-card__value">{eventConfig?.nom_evenement ?? 'Événement'}</div>
           <div className="dashboard-stat-card__hint">
-            {formatEventDates(eventConfig?.date_debut ?? '2025-06-10', eventConfig?.date_fin ?? '2025-06-14')}
+            {formatEventDates(eventConfig?.date_debut ?? null, eventConfig?.date_fin ?? null)}
           </div>
           <div className="dashboard-stat-card__hint">📍 Palais des Congrès, Cotonou</div>
         </div>
@@ -121,6 +124,9 @@ export default function ParticipantDashboard({
           <div className="dashboard-quick-actions">
             <Link href="/dashboard/billetterie" className="dashboard-btn dashboard-btn--primary">
               🎟️ Acheter un billet
+            </Link>
+            <Link href="/dashboard/badge" className="dashboard-btn dashboard-btn--secondary">
+              🪪 Mon badge
             </Link>
             <Link href="/dashboard/profil" className="dashboard-btn dashboard-btn--secondary">
               👤 Mon profil

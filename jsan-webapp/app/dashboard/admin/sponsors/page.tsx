@@ -166,7 +166,7 @@ export default function AdminSponsors() {
   };
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="page-shell" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Sponsors &amp; Partenaires</h1>
@@ -186,7 +186,7 @@ export default function AdminSponsors() {
         )}
       </div>
 
-      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 18px', fontSize: '13px', color: '#1e40af', lineHeight: 1.6 }}>
+      <div style={{ background: '#E8F5EC', border: '1px solid #B7DFC0', borderRadius: '10px', padding: '14px 18px', fontSize: '13px', color: '#145224', lineHeight: 1.6 }}>
         Les logos sont maintenant <strong>uploadés dans Supabase Storage</strong>. Les anciennes URLs restent compatibles en secours.
       </div>
 
@@ -333,11 +333,11 @@ export default function AdminSponsors() {
                           {SPONSOR_LEVEL_LABELS[sponsor.niveau]}
                         </span>
                         {!sponsor.is_active && <span style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 700 }}>Inactif</span>}
-                        {sponsor.is_featured && <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700 }}>Mise en avant</span>}
+                        {sponsor.is_featured && <span style={{ fontSize: '11px', color: '#1B6B2E', fontWeight: 700 }}>Mise en avant</span>}
                       </div>
                       {sponsor.description && <p style={{ margin: '2px 0', fontSize: '13px', color: '#475569' }}>{sponsor.description}</p>}
                       {sponsor.website_url && (
-                        <a href={sponsor.website_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
+                        <a href={sponsor.website_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#1B6B2E', fontWeight: 600 }}>
                           Visiter le site
                         </a>
                       )}

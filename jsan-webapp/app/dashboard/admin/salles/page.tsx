@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from '../../../AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { isEventStaff } from '@/lib/roles';
@@ -109,7 +108,7 @@ export default function AdminSalles() {
   const showVisioFields = form.type === 'virtuelle' || form.type === 'hybride';
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="page-shell page-shell--narrow" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 6px' }}>Gestion des Salles</h1>
@@ -123,13 +122,6 @@ export default function AdminSalles() {
             + Nouvelle salle
           </button>
         )}
-      </div>
-
-      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 18px', fontSize: '13px', color: '#1e40af', lineHeight: 1.6 }}>
-        <strong>Visioconférence :</strong> nous ne construisons pas notre propre outil (trop complexe).
-        Collez un lien <strong>Zoom</strong>, <strong>Google Meet</strong>, <strong>Teams</strong> ou <strong>Jitsi</strong> par salle virtuelle.
-        Pour 3 sessions en parallèle à 14h → 3 salles virtuelles avec 3 liens distincts.
-        <Link href="/dashboard/admin/visioconferences" style={{ marginLeft: '8px', color: '#2563eb', fontWeight: 600 }}>Vue visioconférences →</Link>
       </div>
 
       {message && (
@@ -223,7 +215,7 @@ export default function AdminSalles() {
                   {r.visio_url && (
                     <p style={{ margin: '4px 0 0', fontSize: '13px' }}>
                       {visioProviderIcon(r.visio_provider)} {r.visio_provider ? VISIO_PROVIDER_LABELS[r.visio_provider] : 'Visio'} —{' '}
-                      <a href={r.visio_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>lien</a>
+                      <a href={r.visio_url} target="_blank" rel="noopener noreferrer" style={{ color: '#1B6B2E' }}>lien</a>
                     </p>
                   )}
                   {r.notes && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>{r.notes}</p>}

@@ -78,7 +78,7 @@ export default function BrouillonsResumes() {
       ) : drafts.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px', background: '#f8fafc', borderRadius: '12px', color: '#64748b' }}>
           <p style={{ marginBottom: '16px' }}>Aucun brouillon pour le moment.</p>
-          <Link href="/dashboard/nouvelle-soumission" style={{ color: '#2563eb', fontWeight: 600 }}>Commencer une nouvelle soumission</Link>
+          <Link href="/dashboard/nouvelle-soumission" style={{ color: '#1B6B2E', fontWeight: 600 }}>Commencer une nouvelle soumission</Link>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
@@ -110,7 +110,7 @@ export default function BrouillonsResumes() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                <Link href={`/dashboard/nouvelle-soumission?id=${draft.id}`} style={{ flex: 1, textAlign: 'center', background: '#f8fafc', color: '#2563eb', border: '1px solid #bfdbfe', padding: '6px', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}>
+                <Link href={`/dashboard/nouvelle-soumission?id=${draft.id}`} style={{ flex: 1, textAlign: 'center', background: '#f8fafc', color: '#1B6B2E', border: '1px solid #B7DFC0', padding: '6px', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 500 }}>
                   Continuer
                 </Link>
                 <button

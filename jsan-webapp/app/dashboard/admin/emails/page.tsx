@@ -19,6 +19,11 @@ import {
   type EmailTemplateKey,
   type EmailTemplateMap,
 } from '@/lib/email-templates';
+import {
+  EMAIL_TEMPLATE_LINK_LABELS,
+  previewEmailCtaUrl,
+  resolveEmailTemplateLink,
+} from '@/lib/email-template-links';
 
 type BroadcastAudience = 'all' | 'participants' | 'authors' | 'evaluators' | 'organizers';
 type BroadcastLogMetadata = {
@@ -101,16 +106,38 @@ export default function AdminEmailsPage() {
   const selectedTemplate = templates[selectedKey];
   const sampleVars = sampleVariablesForTemplate(selectedKey);
   const preview = renderEmailTemplate(selectedTemplate, sampleVars);
+  const previewCtaPath = resolveEmailTemplateLink({
+    templateKey: selectedKey,
+    variables: sampleVars,
+  });
+  const previewCtaUrl = previewEmailCtaUrl({
+    templateKey: selectedKey,
+    variables: sampleVars,
+  });
+  const templatePreviewHtml = renderNotificationEmail({
+    title: preview.title,
+    body: preview.body,
+    ctaLabel: preview.ctaLabel || 'Ouvrir la plateforme',
+    ctaUrl: previewCtaUrl,
+    recipientName: sampleVars.nom_complet || sampleVars.prenom || 'Destinataire',
+  });
   const announcementPreview = renderEmailTemplate(templates.special_announcement, {
     ...sampleVariablesForTemplate('special_announcement'),
     message_special: announcementNote.trim() || sampleVariablesForTemplate('special_announcement').message_special,
     lien_plateforme: announcementLink.trim() || '/dashboard/programme',
   });
+  const announcementCtaUrl = previewEmailCtaUrl({
+    templateKey: 'special_announcement',
+    variables: {
+      message_special: announcementNote.trim(),
+    },
+    overrideLink: announcementLink.trim() || '/dashboard/programme',
+  });
   const announcementPreviewHtml = renderNotificationEmail({
     title: announcementPreview.title,
     body: announcementPreview.body,
     ctaLabel: announcementPreview.ctaLabel || 'Ouvrir la plateforme',
-    ctaUrl: announcementLink.trim() || '/dashboard/programme',
+    ctaUrl: announcementCtaUrl,
     recipientName: 'Awa Kouassi',
   });
   const grouped = EMAIL_TEMPLATE_DEFINITIONS.reduce<Record<EmailTemplateCategory, typeof EMAIL_TEMPLATE_DEFINITIONS>>(
@@ -137,7 +164,11 @@ export default function AdminEmailsPage() {
           title: rendered.title,
           body: rendered.body,
           ctaLabel: rendered.ctaLabel || 'Ouvrir la plateforme',
-          ctaUrl: metadata.link ?? '/dashboard',
+          ctaUrl: previewEmailCtaUrl({
+            templateKey,
+            variables: { ...sample, ...(metadata.variables ?? {}) },
+            overrideLink: metadata.link,
+          }),
           recipientName: sample.nom_complet || 'Destinataire',
         });
         return { ...rendered, html };
@@ -270,7 +301,7 @@ export default function AdminEmailsPage() {
   };
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1280px', margin: '0 auto', display: 'grid', gap: '22px' }}>
+    <div className="page-shell page-shell--wide" style={{ display: 'grid', gap: '22px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: '0 0 6px', fontSize: '24px', color: '#0f172a' }}>E-mails éditables</h1>
@@ -376,7 +407,7 @@ export default function AdminEmailsPage() {
                         padding: '10px 12px',
                         borderRadius: '10px',
                         border: `1px solid ${active ? '#93c5fd' : '#e2e8f0'}`,
-                        background: active ? '#eff6ff' : '#fff',
+                        background: active ? '#E8F5EC' : '#fff',
                         cursor: 'pointer',
                       }}
                     >
@@ -433,7 +464,7 @@ export default function AdminEmailsPage() {
               <h3 style={{ margin: '0 0 10px', fontSize: '16px', color: '#0f172a' }}>Variables disponibles</h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {selectedDefinition.variables.map((variable) => (
-                  <span key={variable} style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '999px', padding: '6px 10px' }}>
+                  <span key={variable} style={{ fontSize: '12px', fontWeight: 700, color: '#145224', background: '#E8F5EC', border: '1px solid #B7DFC0', borderRadius: '999px', padding: '6px 10px' }}>
                     {`{{${variable}}}`}
                   </span>
                 ))}
@@ -452,6 +483,9 @@ export default function AdminEmailsPage() {
 
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px' }}>
               <h3 style={{ margin: '0 0 10px', fontSize: '16px', color: '#0f172a' }}>Aperçu texte</h3>
+              <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#94a3b8', lineHeight: 1.5 }}>
+                Résumé technique pour vérifier le contenu. L’URL ci-dessous n’apparaît pas en clair dans le mail reçu : le destinataire voit un bouton cliquable.
+              </p>
               <div style={{ display: 'grid', gap: '10px', fontSize: '13px' }}>
                 <div><strong>Objet :</strong> {preview.subject}</div>
                 <div><strong>Titre :</strong> {preview.title}</div>
@@ -459,8 +493,36 @@ export default function AdminEmailsPage() {
                   <strong>Corps :</strong>
                   <div style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: '#475569', lineHeight: 1.6 }}>{preview.body}</div>
                 </div>
-                <div><strong>Bouton :</strong> {preview.ctaLabel || '—'}</div>
+                <div><strong>Libellé du bouton :</strong> {preview.ctaLabel || '—'}</div>
+                <div style={{ marginTop: '8px' }}>
+                  <strong>Destination (interne) :</strong>{' '}
+                  <code style={{ fontSize: '12px', color: '#166534' }}>{previewCtaPath}</code>
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  URL complète : {previewCtaUrl}
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                  Page cible : {EMAIL_TEMPLATE_LINK_LABELS[selectedKey]}
+                </div>
               </div>
+            </div>
+          </section>
+
+          <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#0f172a' }}>Aperçu HTML (rendu réel)</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                  C’est exactement ce que le destinataire reçoit : un bouton sombre cliquable, pas une URL écrite en texte.
+                </p>
+              </div>
+            </div>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', background: '#f8fafc' }}>
+              <iframe
+                title="Aperçu HTML du modèle"
+                srcDoc={templatePreviewHtml}
+                style={{ width: '100%', height: '520px', border: 'none', background: '#fff' }}
+              />
             </div>
           </section>
 

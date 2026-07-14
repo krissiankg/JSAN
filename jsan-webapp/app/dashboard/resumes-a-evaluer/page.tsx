@@ -10,6 +10,8 @@ import {
   fetchAssignedAbstracts,
   submitAbstractReview,
 } from '@/lib/evaluations';
+import { fetchDoubleBlindEnabled } from '@/lib/review-mode';
+import TableScroll from '@/components/dashboard/TableScroll';
 
 export default function ResumesAEvaluer() {
   const { userRole, user } = useAuth();
@@ -18,6 +20,7 @@ export default function ResumesAEvaluer() {
   const [resumesAssigned, setResumesAssigned] = useState<AssignedAbstract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [doubleBlind, setDoubleBlind] = useState(true);
 
   const [selectedResume, setSelectedResume] = useState<AssignedAbstract | null>(null);
   const [c1, setC1] = useState(0);
@@ -33,8 +36,12 @@ export default function ResumesAEvaluer() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAssignedAbstracts(supabase, user.id);
+      const [data, blind] = await Promise.all([
+        fetchAssignedAbstracts(supabase, user.id),
+        fetchDoubleBlindEnabled(supabase),
+      ]);
       setResumesAssigned(data);
+      setDoubleBlind(blind);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erreur de chargement.';
       const hint = msg.includes('reviews') ? ' Exécutez la migration 008 dans Supabase.' : '';
@@ -94,9 +101,29 @@ export default function ResumesAEvaluer() {
       
       {/* Header */}
       <div>
-        <p style={{ color: '#64748b', fontSize: '0.95rem' }}>
+        <p style={{ color: '#64748b', fontSize: '0.95rem', margin: '0 0 12px' }}>
           Voici la liste des résumés qui vous ont été assignés par le comité scientifique. Veuillez soumettre votre évaluation avant la date limite.
         </p>
+        <a
+          href="/media/media_library/criteres-evaluation-resumes.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#E8F5EC',
+            color: '#145224',
+            border: '1px solid #B7DFC0',
+            borderRadius: '10px',
+            padding: '9px 14px',
+            fontSize: '13px',
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          📄 Critères d’évaluation des résumés (PDF)
+        </a>
       </div>
 
       {error && (
@@ -107,6 +134,7 @@ export default function ResumesAEvaluer() {
 
       {/* Tableau des résumés assignés */}
       <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+        <TableScroll minWidth={720}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #f1f5f9' }}>
@@ -144,11 +172,11 @@ export default function ResumesAEvaluer() {
                     onClick={() => openModal(resume)}
                     style={{ 
                       display: 'inline-flex', alignItems: 'center', gap: '8px', 
-                      background: resume.status === 'Évalué' ? '#f8fafc' : '#2563eb', 
+                      background: resume.status === 'Évalué' ? '#f8fafc' : '#1B6B2E', 
                       color: resume.status === 'Évalué' ? '#64748b' : '#ffffff', 
                       border: resume.status === 'Évalué' ? '1px solid #cbd5e1' : 'none',
                       padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '13px', 
-                      boxShadow: resume.status === 'Évalué' ? 'none' : '0 4px 10px rgba(37,99,235,0.2)' 
+                      boxShadow: resume.status === 'Évalué' ? 'none' : '0 4px 10px rgba(27,107,46,0.2)' 
                     }}
                   >
                     <span>{resume.status === 'Évalué' ? '👁️' : '✍️'}</span>
@@ -159,6 +187,7 @@ export default function ResumesAEvaluer() {
             ))}
           </tbody>
         </table>
+        </TableScroll>
 
         {!loading && resumesAssigned.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: '14px' }}>
@@ -181,7 +210,13 @@ export default function ResumesAEvaluer() {
             <div style={{ padding: '20px 30px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Processus d'Évaluation</h3>
-                <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>{selectedResume.ref} • Mode Double Aveugle</div>
+                <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>
+                  {selectedResume.ref}
+                  {' • '}
+                  {doubleBlind || !selectedResume.authorLabel
+                    ? 'Mode double aveugle (auteur anonyme)'
+                    : `Auteur : ${selectedResume.authorLabel}`}
+                </div>
               </div>
               <button 
                 onClick={() => setSelectedResume(null)}
@@ -202,6 +237,12 @@ export default function ResumesAEvaluer() {
                 <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1e293b', marginBottom: '20px', lineHeight: 1.3 }}>
                   {selectedResume.title}
                 </h2>
+
+                {(doubleBlind || !selectedResume.authorLabel) && (
+                  <div style={{ marginBottom: '16px', padding: '10px 12px', background: '#E8F5EC', border: '1px solid #B7DFC0', borderRadius: '8px', color: '#145224', fontSize: '13px' }}>
+                    Identité de l&apos;auteur masquée. Évaluez uniquement le contenu scientifique.
+                  </div>
+                )}
                 
                 <div style={{ height: '2px', background: '#f1f5f9', width: '100%', marginBottom: '20px' }}></div>
                 
@@ -238,21 +279,21 @@ export default function ResumesAEvaluer() {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Originalité & Innovation</label>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#2563eb' }}>{c1} / 5</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#1B6B2E' }}>{c1} / 5</span>
                     </div>
                     <input type="range" min="0" max="5" value={c1} onChange={(e) => setC1(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Rigueur Méthodologique</label>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#2563eb' }}>{c2} / 5</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#1B6B2E' }}>{c2} / 5</span>
                     </div>
                     <input type="range" min="0" max="5" value={c2} onChange={(e) => setC2(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Pertinence au Thème</label>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#2563eb' }}>{c3} / 5</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#1B6B2E' }}>{c3} / 5</span>
                     </div>
                     <input type="range" min="0" max="5" value={c3} onChange={(e) => setC3(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                   </div>

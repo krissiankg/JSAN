@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import { extractTicketIdFromWebhook } from '@/lib/kkiapay';
 import { settleTicketPayment } from '@/lib/kkiapay-settle';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveKkiapayCredentials } from '@/lib/kkiapay-settings';
 
 // Webhook serveur-à-serveur : Kkiapay le notifie après chaque paiement.
 // Filet de secours si le navigateur du participant se ferme avant le callback.
 //
 // Sécurité : Kkiapay signe l'appel avec le secret (header x-kkiapay-secret).
-// On refuse tout appel dont le secret ne correspond pas à KKIAPAY_SECRET.
 export async function POST(request: Request) {
-  const secret = (process.env.KKIAPAY_SECRET ?? '').trim();
+  const admin = createAdminClient();
+  const creds = await resolveKkiapayCredentials(admin);
+  const secret = creds.secretKey;
   if (!secret) {
     return NextResponse.json({ ok: false, message: 'Webhook non configuré.' }, { status: 503 });
   }

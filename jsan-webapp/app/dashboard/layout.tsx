@@ -12,6 +12,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isResumesOpen, setIsResumesOpen] = useState(true);
   const [isArticlesOpen, setIsArticlesOpen] = useState(true);
   const [isOutilsOpen, setIsOutilsOpen] = useState(true);
@@ -30,6 +31,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }, [isLoggedIn, isLoading]);
 
   useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsProfileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     setMounted(true);
     document.body.classList.add('dashboard-body');
     
@@ -46,6 +52,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isSidebarOpen]);
 
   if (!mounted || isLoading) {
     return (
@@ -66,7 +81,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     case '/dashboard/articles-complets': pageTitle = "Articles complets"; break;
     case '/dashboard/messagerie': pageTitle = "Messagerie"; break;
     case '/dashboard/billetterie': pageTitle = "Billetterie & Événement"; break;
+    case '/dashboard/badge': pageTitle = "Mon badge"; break;
     case '/dashboard/programme': pageTitle = "Programme"; break;
+    case '/dashboard/comite': pageTitle = "Comité d'organisation"; break;
     case '/dashboard/bibliotheque': pageTitle = "Bibliothèque"; break;
     case '/dashboard/attestations': pageTitle = "Mes attestations"; break;
     case '/dashboard/parametres': pageTitle = "Paramètres"; break;
@@ -82,6 +99,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     case '/dashboard/admin/programme': pageTitle = "Programme & Sessions"; break;
     case '/dashboard/admin/salles': pageTitle = "Gestion des Salles"; break;
     case '/dashboard/admin/visioconferences': pageTitle = "Visioconférences & Streaming"; break;
+    case '/dashboard/admin/check-in': pageTitle = "Check-in jour J"; break;
     case '/dashboard/admin/inscriptions': pageTitle = "Inscriptions & Participants"; break;
     case '/dashboard/admin/paiements': pageTitle = "Paiements & Billetterie"; break;
     case '/dashboard/admin/sponsors': pageTitle = "Sponsors & Partenaires"; break;
@@ -94,10 +112,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="dashboard-body" style={{ width: '100%', minHeight: '100vh', display: 'flex' }}>
       
+      {isSidebarOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Fermer le menu"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="dashboard-sidebar">
+      <aside className={`dashboard-sidebar${isSidebarOpen ? ' is-open' : ''}`}>
         <div className="sidebar-logo">
-          <Link href="/">
+          <Link href="/" onClick={() => setIsSidebarOpen(false)}>
             <img src="/media/media_library/logo-jsan.png" alt="JSAN Logo" style={{ height: '45px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} />
           </Link>
         </div>
@@ -231,9 +258,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <div style={{ display: 'grid', gridTemplateRows: isOutilsOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s ease-out' }}>
               <div style={{ overflow: 'hidden' }}>
                 <li><Link href="/dashboard/programme" className={pathname === '/dashboard/programme' ? 'active' : ''}><span className="icon">📅</span> Programme</Link></li>
+                <li>
+                  <Link
+                    href="/dashboard/comite"
+                    className={pathname === '/dashboard/comite' ? 'active' : ''}
+                    onClick={() => setIsSidebarOpen(false)}
+                  >
+                    <span className="icon">👥</span> Comité
+                  </Link>
+                </li>
                 <li><Link href="/dashboard/bibliotheque" className={pathname === '/dashboard/bibliotheque' ? 'active' : ''}><span className="icon">📚</span> Bibliothèque</Link></li>
                 <li><Link href="/dashboard/messagerie" className={pathname === '/dashboard/messagerie' ? 'active' : ''}><span className="icon">✉️</span> Messagerie</Link></li>
                 <li><Link href="/dashboard/billetterie" className={pathname === '/dashboard/billetterie' ? 'active' : ''}><span className="icon">🎟️</span> Billetterie</Link></li>
+                <li><Link href="/dashboard/badge" className={pathname === '/dashboard/badge' ? 'active' : ''}><span className="icon">🪪</span> Mon badge</Link></li>
                 <li><Link href="/dashboard/attestations" className={pathname === '/dashboard/attestations' ? 'active' : ''}><span className="icon">🏅</span> Attestations</Link></li>
                 
                 {isEventStaff(userRole) && (
@@ -252,21 +289,28 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Topbar */}
         <header className="dashboard-topbar">
           <div className="topbar-left">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label={isSidebarOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={isSidebarOpen}
+              onClick={() => setIsSidebarOpen((open) => !open)}
+            >
+              {isSidebarOpen ? '✕' : '☰'}
+            </button>
             <h1 className="page-title">{pageTitle}</h1>
           </div>
           
-          <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-
-            {(userRole === 'pair' || isEventStaff(userRole)) && (
-            <div className="topbar-search">
-              <span className="search-icon">🔍</span>
-              <input type="text" placeholder="Rechercher..." />
-            </div>
-            )}
+          <div className="topbar-right">
             
             {pathname !== '/dashboard/nouvelle-soumission' && (userRole === 'auteur' || userRole === 'pair' || isEventStaff(userRole)) && (
-              <Link href="/dashboard/nouvelle-soumission" className="btn btn-primary" style={{ backgroundColor: '#111827', color: '#ffffff', borderRadius: '8px', padding: '6px 16px', fontWeight: 500, fontSize: '13px', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                Soumettre un résumé
+              <Link
+                href="/dashboard/nouvelle-soumission"
+                className="btn btn-primary topbar-cta"
+                style={{ backgroundColor: 'var(--jsan-green)', color: '#ffffff', borderRadius: '8px', padding: '6px 16px', fontWeight: 600, fontSize: '13px', border: 'none', boxShadow: '0 4px 12px rgba(27,107,46,0.28)', whiteSpace: 'nowrap' }}
+              >
+                <span className="topbar-cta-label">Soumettre un résumé</span>
+                <span className="topbar-cta-icon" aria-hidden style={{ display: 'none' }}>➕</span>
               </Link>
             )}
 
@@ -278,10 +322,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 style={{ 
                   width: '40px', height: '40px', borderRadius: '50%', 
-                  backgroundColor: isSuperAdmin(userRole) ? '#7c3aed' : isEventStaff(userRole) ? '#ef4444' : '#2563eb', 
+                  backgroundColor: isSuperAdmin(userRole) ? 'var(--jsan-green-dark)' : isEventStaff(userRole) ? 'var(--jsan-red)' : 'var(--jsan-green)', 
                   color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', 
                   fontWeight: 'bold', cursor: 'pointer', border: '2px solid #fff', 
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)', transition: 'transform 0.2s',
+                  boxShadow: '0 2px 10px rgba(27,107,46,0.2)', transition: 'transform 0.2s',
                   transform: isProfileOpen ? 'scale(1.05)' : 'scale(1)'
                 }}
               >
@@ -290,7 +334,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               
               {/* Dropdown Menu */}
               {isProfileOpen && (
-                <div style={{ position: 'absolute', top: '50px', right: '0', background: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: '10px', minWidth: '260px', maxHeight: '80vh', overflowY: 'auto', zIndex: 100, border: '1px solid #f1f5f9' }}>
+                <div className="dashboard-profile-menu">
                   <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9', marginBottom: '8px' }}>
                     <div style={{ fontWeight: 600, color: '#1e293b' }}>
                       {profile ? `${profile.prenom ?? ''} ${profile.nom ?? ''}`.trim() || getRoleLabel(userRole) : getRoleLabel(userRole)}
@@ -335,6 +379,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       <Link href="/dashboard/utilisateurs" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.85rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                         <span style={{ fontSize: '14px' }}>🎫</span> Inscriptions
                       </Link>
+                      <Link href="/dashboard/admin/check-in" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.85rem', borderRadius: '8px', transition: 'background 0.2s' }}>
+                        <span style={{ fontSize: '14px' }}>✅</span> Check-in
+                      </Link>
                       <Link href="/dashboard/admin/paiements" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.85rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                         <span style={{ fontSize: '14px' }}>💳</span> Paiements
                       </Link>
@@ -361,13 +408,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
                   {isEventStaff(userRole) && (
                     <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', color: '#475569', cursor: 'pointer', fontSize: '0.9rem', borderRadius: '8px', transition: 'background 0.2s' }}>
+                      <Link href="/dashboard/profil#preferences" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.9rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                         <span style={{ fontSize: '16px' }}>✨</span> Préférences
-                      </div>
+                      </Link>
                       <Link href="/dashboard/parametres" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.9rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                         <span style={{ fontSize: '16px' }}>⚙️</span> Paramètres
                       </Link>
                     </>
+                  )}
+
+                  {!isEventStaff(userRole) && (
+                    <Link href="/dashboard/profil#preferences" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.9rem', borderRadius: '8px', transition: 'background 0.2s' }}>
+                      <span style={{ fontSize: '16px' }}>✨</span> Préférences
+                    </Link>
                   )}
                   
                   <div style={{ height: '1px', background: '#f1f5f9', margin: '8px 0' }}></div>
@@ -384,15 +437,18 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content Area */}
-        <div className="dashboard-content" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1 }}>
+        <div className="dashboard-content">
+          <div className="dashboard-content-body">
             {children}
           </div>
-
-          {/* Footer */}
-          <div className="dashboard-footer" style={{ marginTop: '24px', padding: '16px 0', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
-            Journées Scientifiques de l'Alimentation et de la Nutrition (JSAN) 2025 - Version 1.0.0
-          </div>
+          <footer className="dashboard-footer">
+            Journées Scientifiques de l&apos;Alimentation et de la Nutrition (JSAN) — Version 2.0
+            {' · '}
+            Conçu par{' '}
+            <a href="https://guelichweb.online/" target="_blank" rel="noopener noreferrer">
+              Guelichweb
+            </a>
+          </footer>
         </div>
 
       </main>

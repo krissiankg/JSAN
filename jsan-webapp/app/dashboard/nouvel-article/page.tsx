@@ -24,6 +24,7 @@ import {
   type InstructionDocument,
 } from '@/lib/author-instructions';
 import { getEventDocumentSignedUrl } from '@/lib/event-documents';
+import { notifyManuscriptSubmitted } from '@/lib/notifications';
 
 interface AcceptedAbstract {
   id: string;
@@ -247,7 +248,8 @@ export default function SubmitArticlePage() {
 
     setSaving(false);
     setMessage({ type: 'success', text: statut === 'Brouillon' ? 'Brouillon enregistré.' : 'Article soumis avec succès !' });
-    if (statut === 'Soumis') {
+    if (statut === 'Soumis' && user) {
+      void notifyManuscriptSubmitted(supabase, user.id, title.trim());
       setTimeout(() => router.push('/dashboard/articles-complets'), 1200);
     }
   };
@@ -319,7 +321,7 @@ export default function SubmitArticlePage() {
           <label>Manuscrit complet (PDF ou Word) <span style={{ color: 'red' }}>*</span></label>
           {mainFile ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '8px' }}>
-              <button type="button" onClick={async () => { const u = await getArticleFileSignedUrl(supabase, mainFile.file_url); if (u) window.open(u, '_blank'); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px' }}>📄 {mainFile.file_name}</button>
+              <button type="button" onClick={async () => { const u = await getArticleFileSignedUrl(supabase, mainFile.file_url); if (u) window.open(u, '_blank'); }} style={{ background: 'none', border: 'none', color: '#1B6B2E', cursor: 'pointer', fontSize: '13px' }}>📄 {mainFile.file_name}</button>
               <button type="button" onClick={async () => { await deleteArticleFileRecord(supabase, mainFile); setFiles((p) => p.filter((f) => f.id !== mainFile.id)); }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px' }}>Supprimer</button>
             </div>
           ) : (
@@ -335,7 +337,7 @@ export default function SubmitArticlePage() {
         <div className="form-group">
           <label>Fichiers supplémentaires (optionnel)</label>
           <input ref={annexInputRef} type="file" accept=".pdf,.doc,.docx,.zip,.jpg,.jpeg,.png,.xlsx" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleFileUpload(f, true); }} />
-          <button type="button" disabled={uploading} onClick={() => annexInputRef.current?.click()} style={{ width: '100%', marginTop: '8px', padding: '12px', border: '1px dashed #cbd5e1', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '12px', color: '#2563eb' }}>
+          <button type="button" disabled={uploading} onClick={() => annexInputRef.current?.click()} style={{ width: '100%', marginTop: '8px', padding: '12px', border: '1px dashed #cbd5e1', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '12px', color: '#1B6B2E' }}>
             + Ajouter une annexe
           </button>
           {annexFiles.map((f) => (
@@ -362,24 +364,24 @@ export default function SubmitArticlePage() {
           <button type="button" disabled={saving} onClick={() => handleSave('Brouillon')} style={{ padding: '6px 16px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px' }}>
             {saving ? '…' : 'Enregistrer brouillon'}
           </button>
-          <button type="button" disabled={saving} onClick={() => handleSave('Soumis')} style={{ padding: '6px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
+          <button type="button" disabled={saving} onClick={() => handleSave('Soumis')} style={{ padding: '6px 16px', backgroundColor: '#1B6B2E', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
             {saving ? '…' : 'Soumettre l\'article'}
           </button>
         </div>
       </div>
 
       <div style={{
-        background: 'linear-gradient(160deg, #eff6ff 0%, #f8fafc 55%, #ffffff 100%)',
+        background: 'linear-gradient(160deg, #E8F5EC 0%, #f8fafc 55%, #ffffff 100%)',
         padding: '16px',
         borderRadius: '12px',
-        border: '1px solid #bfdbfe',
+        border: '1px solid #B7DFC0',
         position: 'sticky',
         top: '20px',
         minWidth: 0,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#1d4ed8', marginBottom: '6px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#145224', marginBottom: '6px' }}>
               Guide officiel
             </div>
             <h3 style={{ fontSize: '14px', color: '#0f172a', margin: '0 0 6px', lineHeight: 1.35 }}>
@@ -392,12 +394,12 @@ export default function SubmitArticlePage() {
           <span style={{
             flexShrink: 0,
             background: '#ffffff',
-            color: '#1e40af',
+            color: '#145224',
             fontSize: '10px',
             fontWeight: 700,
             padding: '4px 8px',
             borderRadius: '6px',
-            border: '1px solid #bfdbfe',
+            border: '1px solid #B7DFC0',
           }}>
             {guidePublished ? instructionFormatLabel(instructionsDoc.format) : 'En attente'}
           </span>

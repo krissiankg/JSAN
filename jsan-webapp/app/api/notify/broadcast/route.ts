@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchEmailTemplateConfig, renderEmailTemplate, type EmailTemplateKey } from '@/lib/email-templates';
+import { resolveEmailCtaUrl } from '@/lib/email-template-links';
 import { isEmailConfigured, renderNotificationEmail, sendEmail } from '@/lib/email';
 import { isEventStaff, mapDbRoleToAppRole, type DbUserRole } from '@/lib/roles';
 
@@ -124,7 +125,11 @@ export async function POST(request: Request) {
   });
 
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim() || new URL(request.url).origin;
-  const ctaUrl = link ? `${base.replace(/\/$/, '')}${link}` : base;
+  const ctaUrl = resolveEmailCtaUrl(base, {
+    templateKey,
+    variables,
+    overrideLink: link,
+  });
 
   let sent = 0;
   let failed = 0;

@@ -165,7 +165,7 @@ export default function ArticlesComplets() {
                         onClick={() => setExpandedId(isExpanded ? null : item.id)}
                         style={{
                           width: '100%', padding: '10px 0', background: 'none', border: 'none',
-                          color: '#2563eb', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                          color: '#1B6B2E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                         }}
                       >
                         {isExpanded ? '▾ Masquer les retours' : '▸ Voir les retours et la décision'}

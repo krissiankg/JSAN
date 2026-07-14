@@ -6,6 +6,7 @@ import { useAuth } from '../../../AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { isEventStaff } from '@/lib/roles';
 import { abstractStatusStyle, formatScoreDisplay } from '@/lib/abstracts';
+import TableScroll from '@/components/dashboard/TableScroll';
 import {
   type OrganizerDecision,
   type SubmissionRow,
@@ -213,7 +214,7 @@ export default function AdminSoumissions() {
               onClick={() => setViewMode('manuscrits')}
               style={{
                 padding: '8px 20px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                background: viewMode === 'manuscrits' ? '#7c3aed' : 'transparent',
+                background: viewMode === 'manuscrits' ? '#C9A010' : 'transparent',
                 color: viewMode === 'manuscrits' ? '#fff' : '#64748b',
               }}
             >
@@ -275,6 +276,7 @@ export default function AdminSoumissions() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
+            <TableScroll minWidth={880}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #f1f5f9' }}>
@@ -318,9 +320,9 @@ export default function AdminSoumissions() {
                         onClick={() => openDetail(row)}
                         style={{
                           padding: '8px 16px', borderRadius: '8px', border: 'none',
-                          background: '#2563eb', color: '#fff', fontWeight: 600,
+                          background: '#1B6B2E', color: '#fff', fontWeight: 600,
                           fontSize: '13px', cursor: 'pointer',
-                          boxShadow: '0 4px 10px rgba(37,99,235,0.2)',
+                          boxShadow: '0 4px 10px rgba(27,107,46,0.2)',
                         }}
                       >
                         Examiner
@@ -330,6 +332,7 @@ export default function AdminSoumissions() {
                 ))}
               </tbody>
             </table>
+            </TableScroll>
           </div>
         )}
         </>
@@ -419,7 +422,7 @@ export default function AdminSoumissions() {
                       onClick={handleAssign}
                       style={{
                         padding: '10px 18px', borderRadius: '8px', border: 'none',
-                        background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '13px',
+                        background: '#1B6B2E', color: '#fff', fontWeight: 600, fontSize: '13px',
                         cursor: pickEvaluatorId && !assignLoading ? 'pointer' : 'not-allowed',
                         opacity: pickEvaluatorId && !assignLoading ? 1 : 0.6,
                       }}

@@ -19,6 +19,8 @@ export interface AssignedAbstract {
   filePath: string | null;
   fileType: string | null;
   myReview: Review | null;
+  /** Renseigné seulement si le double aveugle est désactivé. */
+  authorLabel: string | null;
 }
 
 export interface AssignedArticle {
@@ -35,6 +37,7 @@ export interface AssignedArticle {
   myReviewId: string | null;
   myReviewStatus: ReviewStatus | null;
   myReview: Review | null;
+  authorLabel: string | null;
 }
 
 /** Décision de recommandation stockée dans scores.recommandation */
@@ -89,7 +92,22 @@ export async function fetchAssignedAbstracts(
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: any) => {
+  const rows = data ?? [];
+  const authorLabels = new Map<string, string | null>();
+  await Promise.all(
+    rows.map(async (row: { id: string }) => {
+      try {
+        const { data: label, error: rpcError } = await supabase.rpc('get_submission_author_label', {
+          abstract_uuid: row.id,
+        });
+        authorLabels.set(row.id, !rpcError && typeof label === 'string' ? label : null);
+      } catch {
+        authorLabels.set(row.id, null);
+      }
+    })
+  );
+
+  return rows.map((row: any) => {
     const myReview: Review | null =
       (row.reviews ?? []).find((r: Review) => r.reviewer_id === reviewerId) ?? null;
     const mainFile = (row.abstract_files ?? [])[0] ?? null;
@@ -106,6 +124,7 @@ export async function fetchAssignedAbstracts(
       filePath: mainFile?.file_url ?? null,
       fileType: mainFile?.file_type ?? null,
       myReview,
+      authorLabel: authorLabels.get(row.id) ?? null,
     } as AssignedAbstract;
   });
 }
@@ -146,31 +165,44 @@ export async function fetchAssignedArticles(
     }
   }
 
-  return rows.map((row: any) => {
-    const myReview: Review | null = reviewsByAbstract.get(row.abstract_id) ?? null;
-    const abstract = takeFirstRelation(row.abstracts);
-    const mainFile =
-      (row.full_article_files ?? []).find((f: any) => f.type_document === 'Manuscrit_Principal')
-      ?? (row.full_article_files ?? [])[0]
-      ?? null;
-    const sizeMb = mainFile?.file_size_mb ? `${mainFile.file_size_mb} MB` : '—';
+  return Promise.all(
+    rows.map(async (row: any) => {
+      const myReview: Review | null = reviewsByAbstract.get(row.abstract_id) ?? null;
+      const abstract = takeFirstRelation(row.abstracts);
+      const mainFile =
+        (row.full_article_files ?? []).find((f: any) => f.type_document === 'Manuscrit_Principal')
+        ?? (row.full_article_files ?? [])[0]
+        ?? null;
+      const sizeMb = mainFile?.file_size_mb ? `${mainFile.file_size_mb} MB` : '—';
 
-    return {
-      id: row.id,
-      abstractId: row.abstract_id,
-      ref: formatArticleRef(row.id),
-      title: row.titre,
-      thematic: abstract?.thematique ?? 'Non spécifiée',
-      deadline: deriveDeadline(row.created_at, 30),
-      status: displayStatusFromReview(myReview),
-      fileName: mainFile?.file_name ?? null,
-      filePath: mainFile?.file_url ?? null,
-      fileSize: sizeMb,
-      myReviewId: myReview?.id ?? null,
-      myReviewStatus: myReview?.statut ?? null,
-      myReview,
-    } as AssignedArticle;
-  });
+      let authorLabel: string | null = null;
+      try {
+        const { data: label, error: rpcError } = await supabase.rpc('get_submission_author_label', {
+          abstract_uuid: row.abstract_id,
+        });
+        authorLabel = !rpcError && typeof label === 'string' ? label : null;
+      } catch {
+        authorLabel = null;
+      }
+
+      return {
+        id: row.id,
+        abstractId: row.abstract_id,
+        ref: formatArticleRef(row.id),
+        title: row.titre,
+        thematic: abstract?.thematique ?? 'Non spécifiée',
+        deadline: deriveDeadline(row.created_at, 30),
+        status: displayStatusFromReview(myReview),
+        fileName: mainFile?.file_name ?? null,
+        filePath: mainFile?.file_url ?? null,
+        fileSize: sizeMb,
+        myReviewId: myReview?.id ?? null,
+        myReviewStatus: myReview?.statut ?? null,
+        myReview,
+        authorLabel,
+      } as AssignedArticle;
+    })
+  );
 }
 
 /**

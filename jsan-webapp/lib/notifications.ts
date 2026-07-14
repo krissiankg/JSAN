@@ -290,3 +290,152 @@ export async function notifyEvaluatorApproved(
     templateKey: 'reviewer_application_approved',
   });
 }
+
+export async function notifyEvaluatorRejected(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<void> {
+  await createNotification(supabase, {
+    userId,
+    type: 'soumission',
+    title: 'Candidature évaluateur non retenue',
+    body: 'Votre candidature comme évaluateur n’a pas été retenue pour cette édition des JSAN.',
+    link: '/dashboard',
+    templateKey: 'reviewer_application_rejected',
+  });
+}
+
+export async function notifyAbstractSubmitted(
+  supabase: SupabaseClient,
+  authorId: string,
+  abstractId: string,
+  titre: string
+): Promise<void> {
+  const short = truncateTitle(titre);
+  await createNotification(supabase, {
+    userId: authorId,
+    type: 'soumission',
+    title: 'Résumé soumis',
+    body: `Votre résumé « ${short} » a bien été reçu par le comité scientifique.`,
+    link: `/dashboard/mes-resumes/${abstractId}`,
+    templateKey: 'abstract_submitted',
+    templateVariables: { titre_resume: short },
+  });
+}
+
+export async function notifyManuscriptSubmitted(
+  supabase: SupabaseClient,
+  authorId: string,
+  titre: string
+): Promise<void> {
+  const short = truncateTitle(titre);
+  await createNotification(supabase, {
+    userId: authorId,
+    type: 'soumission',
+    title: 'Manuscrit soumis',
+    body: `Votre manuscrit « ${short} » a bien été reçu.`,
+    link: '/dashboard/articles-complets',
+    templateKey: 'manuscript_submitted',
+    templateVariables: { titre_manuscrit: short },
+  });
+}
+
+export async function notifyReviewerApplicationReceived(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<void> {
+  await createNotification(supabase, {
+    userId,
+    type: 'soumission',
+    title: 'Candidature évaluateur reçue',
+    body: 'Votre candidature pour rejoindre le comité de lecture JSAN a bien été reçue.',
+    link: '/dashboard',
+    templateKey: 'reviewer_application_received',
+  });
+}
+
+export async function notifyPaymentPending(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { typeBillet: string; montant: number | null; paymentLink?: string | null }
+): Promise<void> {
+  const montant =
+    input.montant != null ? `${Number(input.montant).toLocaleString('fr-FR')} FCFA` : '';
+  await createNotification(supabase, {
+    userId,
+    type: 'billetterie',
+    title: 'Paiement en attente',
+    body: `Votre demande pour « ${input.typeBillet} » est en attente de confirmation.`,
+    link: input.paymentLink ?? '/dashboard/billetterie',
+    templateKey: 'payment_pending',
+    templateVariables: {
+      type_billet: input.typeBillet,
+      montant,
+      lien_paiement: input.paymentLink ?? '',
+    },
+  });
+}
+
+export async function notifyPaymentConfirmed(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { typeBillet: string; montant: number | null; reference?: string | null }
+): Promise<void> {
+  const montant =
+    input.montant != null ? `${Number(input.montant).toLocaleString('fr-FR')} FCFA` : '';
+  await createNotification(supabase, {
+    userId,
+    type: 'billetterie',
+    title: 'Paiement confirmé',
+    body: `Votre paiement pour « ${input.typeBillet} » a été confirmé.`,
+    link: '/dashboard/billetterie',
+    templateKey: 'payment_confirmed',
+    templateVariables: {
+      type_billet: input.typeBillet,
+      montant,
+      reference: input.reference ?? '',
+    },
+  });
+}
+
+export async function notifyPaymentFailed(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { typeBillet: string; montant: number | null; paymentLink?: string | null }
+): Promise<void> {
+  const montant =
+    input.montant != null ? `${Number(input.montant).toLocaleString('fr-FR')} FCFA` : '';
+  await createNotification(supabase, {
+    userId,
+    type: 'billetterie',
+    title: 'Paiement échoué',
+    body: `Votre tentative de paiement pour « ${input.typeBillet} » n'a pas abouti.`,
+    link: input.paymentLink ?? '/dashboard/billetterie',
+    templateKey: 'payment_failed',
+    templateVariables: {
+      type_billet: input.typeBillet,
+      montant,
+      lien_paiement: input.paymentLink ?? '',
+    },
+  });
+}
+
+export async function notifyAttestationAvailable(
+  supabase: SupabaseClient,
+  userId: string,
+  documentName: string,
+  link = '/dashboard/attestations'
+): Promise<void> {
+  await createNotification(supabase, {
+    userId,
+    type: 'evenement',
+    title: 'Attestation disponible',
+    body: `Votre document « ${documentName} » est disponible au téléchargement.`,
+    link,
+    templateKey: 'attestation_available',
+    templateVariables: {
+      nom_document: documentName,
+      lien_attestation: link,
+    },
+  });
+}

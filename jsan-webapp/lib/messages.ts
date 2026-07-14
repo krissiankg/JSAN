@@ -114,15 +114,51 @@ export interface StaffContactProfile {
   role: string;
 }
 
-export async function getStaffContactProfile(supabase: SupabaseClient): Promise<StaffContactProfile | null> {
+export async function getStaffContactProfile(
+  supabase: SupabaseClient,
+  excludeUserId?: string | null
+): Promise<StaffContactProfile | null> {
+  // 1) Contact explicitement choisi dans Paramètres → Comité
+  try {
+    const { getCommitteeMessagingContact } = await import('@/lib/committee');
+    const fromCommittee = await getCommitteeMessagingContact(supabase, excludeUserId);
+    if (fromCommittee) return fromCommittee;
+  } catch {
+    /* table absente tant que migration 035 non appliquée */
+  }
+
+  // 2) Repli : premier compte staff
   const { data } = await supabase
     .from('users_profile')
     .select('id, prenom, nom, role')
-    .in('role', ['organisateur', 'superadmin'])
+    .in('role', ['organisateur', 'superadmin', 'admin'])
     .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return data as StaffContactProfile | null;
+    .limit(5);
+
+  const rows = (data ?? []) as StaffContactProfile[];
+  if (excludeUserId) {
+    return rows.find((row) => row.id !== excludeUserId) ?? null;
+  }
+  return rows[0] ?? null;
+}
+
+/** Brouillon local pour démarrer une conversation sans message encore en base. */
+export function createDraftThread(profile: StaffContactProfile): MessageThread {
+  return {
+    id: profile.id,
+    otherUserId: profile.id,
+    otherUserName: threadDisplayName(profile.prenom, profile.nom, profile.role),
+    otherUserHandle: userHandle(profile.prenom, profile.nom, profile.role),
+    otherUserRole: profile.role,
+    otherUserPrenom: profile.prenom,
+    otherUserNom: profile.nom,
+    abstractId: null,
+    abstractTitle: null,
+    lastMessage: 'Nouvelle conversation',
+    lastMessageAt: new Date().toISOString(),
+    unread: false,
+    messages: [],
+  };
 }
 
 export function staffContactDisplayName(profile: StaffContactProfile | null): string {

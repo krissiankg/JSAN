@@ -49,10 +49,28 @@ export default function ProgrammePage() {
     return (
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
         <div style={{ fontSize: '56px', marginBottom: '14px' }}>📅</div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>Programme à venir</h1>
-        <p style={{ color: '#64748b', fontSize: '15px', margin: 0 }}>
-          Le programme détaillé de l&apos;événement n&apos;est pas encore publié. Revenez bientôt !
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>Programme</h1>
+        <p style={{ color: '#64748b', fontSize: '15px', margin: '0 0 18px' }}>
+          Le programme interactif n&apos;est pas encore publié. Vous pouvez télécharger le PDF officiel.
         </p>
+        <a
+          href="/media/media_library/programme-jsan-2025.pdf"
+          download
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#1B6B2E',
+            color: '#fff',
+            padding: '11px 18px',
+            borderRadius: '10px',
+            fontWeight: 600,
+            fontSize: '14px',
+            textDecoration: 'none',
+          }}
+        >
+          📥 Télécharger le programme (PDF)
+        </a>
       </div>
     );
   }
@@ -116,7 +134,7 @@ function DayChip({ label, active, onClick }: { label: string; active: boolean; o
 }
 
 function PublicSessionCard({ session, abstractsById }: { session: AgendaSession; abstractsById: Map<string, AcceptedAbstract> }) {
-  const accent = session.couleur || '#2563eb';
+  const accent = session.couleur || '#1B6B2E';
   const linkedIds = session.abstracts_inclus ?? [];
   const linkedTitles = linkedIds.map((id) => abstractsById.get(id)?.titre).filter((t): t is string => !!t);
 
@@ -145,13 +163,13 @@ function PublicSessionCard({ session, abstractsById }: { session: AgendaSession;
 
         {linkedTitles.length > 0 ? (
           <div style={{ marginTop: '10px', background: '#f8fafc', borderRadius: '8px', padding: '10px 12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Présentations</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#C9A010', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>Présentations</div>
             <ul style={{ margin: 0, paddingLeft: '18px', color: '#475569', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
               {linkedTitles.map((t, i) => <li key={i}>{t}</li>)}
             </ul>
           </div>
         ) : linkedIds.length > 0 ? (
-          <p style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600, margin: '10px 0 0' }}>
+          <p style={{ fontSize: '12px', color: '#C9A010', fontWeight: 600, margin: '10px 0 0' }}>
             📄 {linkedIds.length} présentation{linkedIds.length > 1 ? 's' : ''} au programme
           </p>
         ) : null}

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isEventStaff, mapDbRoleToAppRole, type DbUserRole } from '@/lib/roles';
 import { fetchEmailTemplateConfig, renderEmailTemplate, sampleVariablesForTemplate, type EmailTemplateKey } from '@/lib/email-templates';
+import { resolveEmailCtaUrl } from '@/lib/email-template-links';
 import { isEmailConfigured, renderNotificationEmail, sendEmail } from '@/lib/email';
 
 interface Payload {
@@ -54,8 +55,9 @@ export async function POST(request: Request) {
   }
 
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim() || new URL(request.url).origin;
+  const sample = sampleVariablesForTemplate(payload.templateKey);
   const rendered = renderEmailTemplate(template, {
-    ...sampleVariablesForTemplate(payload.templateKey),
+    ...sample,
     prenom: callerProfile?.prenom ?? 'Admin',
     nom_complet: [callerProfile?.prenom, callerProfile?.nom].filter(Boolean).join(' ') || 'Admin JSAN',
     email: to,
@@ -66,7 +68,10 @@ export async function POST(request: Request) {
     title: rendered.title,
     body: rendered.body,
     ctaLabel: rendered.ctaLabel || 'Ouvrir la plateforme',
-    ctaUrl: base,
+    ctaUrl: resolveEmailCtaUrl(base, {
+      templateKey: payload.templateKey,
+      variables: sample,
+    }),
     recipientName: [callerProfile?.prenom, callerProfile?.nom].filter(Boolean).join(' ') || null,
   });
 

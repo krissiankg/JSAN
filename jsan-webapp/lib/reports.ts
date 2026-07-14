@@ -20,6 +20,8 @@ export interface TicketRow {
 }
 export interface UserRow {
   role: string;
+  institution: string | null;
+  pays: string | null;
 }
 
 export interface ReportsData {
@@ -36,7 +38,7 @@ export async function fetchReportsData(supabase: SupabaseClient): Promise<Report
     supabase.from('full_articles').select('statut'),
     supabase.from('reviews').select('statut'),
     supabase.from('tickets_registrations').select('type_billet, montant, statut_paiement, created_at'),
-    supabase.from('users_profile').select('role'),
+    supabase.from('users_profile').select('role, institution, pays'),
   ]);
 
   return {
@@ -109,6 +111,7 @@ function toChartData(map: Map<string, number>, labels?: Record<string, string>):
 // --- KPI --------------------------------------------------------------------
 
 export interface ReportsKpis {
+  auteurs: number;
   soumissions: number;
   acceptes: number;
   rejetes: number;
@@ -139,6 +142,7 @@ export function computeKpis(data: ReportsData): ReportsKpis {
   const revenus = paid.reduce((sum, t) => sum + (Number(t.montant) || 0), 0);
 
   return {
+    auteurs: data.users.filter((u) => u.role === 'auteur').length,
     soumissions: submitted.length,
     acceptes,
     rejetes,
@@ -198,4 +202,14 @@ export function revenueByTicket(data: ReportsData): ChartDatum[] {
     map.set(t.type_billet, (map.get(t.type_billet) ?? 0) + (Number(t.montant) || 0));
   }
   return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+}
+
+/** Profils avec institution renseignée, top N. */
+export function usersByInstitution(data: ReportsData, limit = 8): ChartDatum[] {
+  return toChartData(countBy(data.users, (u) => u.institution?.trim() || null)).slice(0, limit);
+}
+
+/** Profils par pays (libellé libre), top N. */
+export function usersByCountry(data: ReportsData, limit = 10): ChartDatum[] {
+  return toChartData(countBy(data.users, (u) => u.pays?.trim() || null)).slice(0, limit);
 }

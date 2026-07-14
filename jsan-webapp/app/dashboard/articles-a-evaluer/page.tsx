@@ -10,6 +10,8 @@ import {
   fetchAssignedArticles,
   submitAbstractReview,
 } from '@/lib/evaluations';
+import { fetchDoubleBlindEnabled } from '@/lib/review-mode';
+import TableScroll from '@/components/dashboard/TableScroll';
 
 export default function ArticlesAEvaluer() {
   const { userRole, user } = useAuth();
@@ -18,6 +20,7 @@ export default function ArticlesAEvaluer() {
   const [articlesAssigned, setArticlesAssigned] = useState<AssignedArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [doubleBlind, setDoubleBlind] = useState(true);
 
   const [selectedArticle, setSelectedArticle] = useState<AssignedArticle | null>(null);
   const [c1, setC1] = useState(0);
@@ -34,8 +37,12 @@ export default function ArticlesAEvaluer() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAssignedArticles(supabase, user.id);
+      const [data, blind] = await Promise.all([
+        fetchAssignedArticles(supabase, user.id),
+        fetchDoubleBlindEnabled(supabase),
+      ]);
       setArticlesAssigned(data);
+      setDoubleBlind(blind);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erreur de chargement.';
       const hint = msg.includes('full_articles') ? ' Exécutez la migration 012 dans Supabase.' : '';
@@ -116,6 +123,7 @@ export default function ArticlesAEvaluer() {
 
       {/* Tableau des articles assignés */}
       <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+        <TableScroll minWidth={720}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #f1f5f9' }}>
@@ -153,7 +161,7 @@ export default function ArticlesAEvaluer() {
                     onClick={() => openModal(article)}
                     style={{ 
                       display: 'inline-flex', alignItems: 'center', gap: '8px', 
-                      background: article.status === 'Évalué' ? '#f8fafc' : '#8b5cf6', 
+                      background: article.status === 'Évalué' ? '#f8fafc' : '#3D8A4F', 
                       color: article.status === 'Évalué' ? '#64748b' : '#ffffff', 
                       border: article.status === 'Évalué' ? '1px solid #cbd5e1' : 'none',
                       padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '13px', 
@@ -168,6 +176,7 @@ export default function ArticlesAEvaluer() {
             ))}
           </tbody>
         </table>
+        </TableScroll>
 
         {!loading && articlesAssigned.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: '14px' }}>
@@ -190,7 +199,13 @@ export default function ArticlesAEvaluer() {
             <div style={{ padding: '20px 30px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Évaluation du Manuscrit Complet</h3>
-                <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>{selectedArticle.ref} • Mode Double Aveugle</div>
+                <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>
+                  {selectedArticle.ref}
+                  {' • '}
+                  {doubleBlind || !selectedArticle.authorLabel
+                    ? 'Mode double aveugle (auteur anonyme)'
+                    : `Auteur : ${selectedArticle.authorLabel}`}
+                </div>
               </div>
               <button 
                 onClick={() => setSelectedArticle(null)}
@@ -221,7 +236,11 @@ export default function ArticlesAEvaluer() {
                     📑
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>{selectedArticle.fileName ?? 'Aucun fichier'}</div>
-                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '24px' }}>Document anonymisé • {selectedArticle.fileSize}</div>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '24px' }}>
+                    {(doubleBlind || !selectedArticle.authorLabel) ? 'Document anonymisé' : `Auteur : ${selectedArticle.authorLabel}`}
+                    {' • '}
+                    {selectedArticle.fileSize}
+                  </div>
                   
                   <button onClick={handleDownload} disabled={downloading || !selectedArticle.filePath} style={{ padding: '12px 24px', background: '#111827', borderRadius: '8px', color: '#ffffff', fontWeight: 600, fontSize: '15px', cursor: selectedArticle.filePath ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', border: 'none', opacity: selectedArticle.filePath ? 1 : 0.5 }}>
                     <span>⬇️</span> {downloading ? '...' : 'Télécharger le manuscrit'}
@@ -241,23 +260,23 @@ export default function ArticlesAEvaluer() {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Qualité Rédactionnelle et Structure</label>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#8b5cf6' }}>{c1} / 5</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#3D8A4F' }}>{c1} / 5</span>
                     </div>
-                    <input type="range" min="0" max="5" value={c1} onChange={(e) => setC1(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#8b5cf6' }} />
+                    <input type="range" min="0" max="5" value={c1} onChange={(e) => setC1(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#3D8A4F' }} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Analyse des Données et Résultats</label>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#8b5cf6' }}>{c2} / 5</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#3D8A4F' }}>{c2} / 5</span>
                     </div>
-                    <input type="range" min="0" max="5" value={c2} onChange={(e) => setC2(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#8b5cf6' }} />
+                    <input type="range" min="0" max="5" value={c2} onChange={(e) => setC2(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#3D8A4F' }} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>Discussion et Conclusion</label>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#8b5cf6' }}>{c3} / 5</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#3D8A4F' }}>{c3} / 5</span>
                     </div>
-                    <input type="range" min="0" max="5" value={c3} onChange={(e) => setC3(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#8b5cf6' }} />
+                    <input type="range" min="0" max="5" value={c3} onChange={(e) => setC3(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer', accentColor: '#3D8A4F' }} />
                   </div>
                 </div>
 
@@ -297,7 +316,7 @@ export default function ArticlesAEvaluer() {
                 <button 
                   onClick={handleSubmit}
                   disabled={submitting}
-                  style={{ width: '100%', background: '#8b5cf6', color: '#fff', padding: '14px', borderRadius: '12px', border: 'none', fontWeight: 600, fontSize: '15px', cursor: submitting ? 'wait' : 'pointer', boxShadow: '0 4px 15px rgba(139,92,246,0.3)', opacity: submitting ? 0.7 : 1 }}
+                  style={{ width: '100%', background: '#3D8A4F', color: '#fff', padding: '14px', borderRadius: '12px', border: 'none', fontWeight: 600, fontSize: '15px', cursor: submitting ? 'wait' : 'pointer', boxShadow: '0 4px 15px rgba(139,92,246,0.3)', opacity: submitting ? 0.7 : 1 }}
                 >
                   {submitting ? 'Envoi en cours…' : 'Envoyer l\'Avis de Publication'}
                 </button>

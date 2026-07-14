@@ -17,7 +17,7 @@ export default function AttestationsPage() {
     async function load() {
       if (!user) return;
       setLoading(true);
-      const settings = await fetchAttestationSettings(supabase);
+      const { settings } = await fetchAttestationSettings(supabase);
       setSettingsOpen(settings?.attestations_enabled ?? false);
       if (settings?.attestations_enabled) {
         setAttestations(await fetchMyAttestations(supabase, user.id));

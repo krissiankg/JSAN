@@ -8,23 +8,28 @@
 }
 
 :root {
-  --green-dark: #1a5c2a;
-  --green-primary: #2e7d32;
-  --green-medium: #388e3c;
+  /* Alignés sur le logo JSAN */
+  --green-dark: #145224;
+  --green-primary: #1B6B2E;
+  --green-medium: #3D8A4F;
   --green-light: #4caf50;
   --green-lighter: #66bb6a;
-  --green-pale: #e8f5e9;
+  --green-pale: #E8F5EC;
   --green-olive: #5a7a3a;
-  --gold: #c8a415;
-  --gold-dark: #b8960f;
-  --gold-light: #e6c619;
+  --gold: #C9A010;
+  --gold-dark: #A8860C;
+  --gold-light: #F0C419;
+  --jsan-yellow: #F0C419;
+  --jsan-red: #D94A2A;
+  --jsan-red-dark: #B53A1F;
+  --jsan-red-soft: #FDECEA;
   --white: #ffffff;
   --off-white: #f5f5f5;
   --gray-light: #f0f0f0;
   --gray: #e0e0e0;
   --gray-medium: #999;
   --gray-dark: #666;
-  --text-dark: #1a1a2e;
+  --text-dark: #0F1F14;
   --text-body: #333;
   --text-muted: #555;
   --blue-dark: #1a1a3e;
@@ -121,15 +126,32 @@ h6 {
   left: 0;
   right: 0;
   z-index: 9999;
-  background: #2b8c38;
-  /* vibrant green */
+  background: var(--green-primary);
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
 }
 
+.navbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--green-primary) 0%,
+    var(--green-primary) 34%,
+    var(--jsan-yellow) 34%,
+    var(--jsan-yellow) 66%,
+    var(--jsan-red) 66%,
+    var(--jsan-red) 100%
+  );
+  pointer-events: none;
+}
+
 .navbar.scrolled {
-  background: #1e5a23;
-  /* darker green on scroll */
+  background: var(--green-dark);
   box-shadow: var(--shadow-md);
 }
 
@@ -311,8 +333,7 @@ h6 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: #2b8c38;
-  /* vibrant green */
+  background: var(--green-primary);
   padding-top: 50px;
   overflow: hidden;
   box-sizing: border-box;
@@ -377,9 +398,18 @@ h6 {
 }
 
 .hero-divider {
-  width: 80px;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.6);
+  width: 96px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--green-primary) 0%,
+    var(--green-primary) 34%,
+    var(--jsan-yellow) 34%,
+    var(--jsan-yellow) 66%,
+    var(--jsan-red) 66%,
+    var(--jsan-red) 100%
+  );
   margin: 25px auto;
   animation: fadeInUp 0.6s ease 0.25s both;
 }

@@ -12,6 +12,7 @@ import {
   isEvaluatorApproved,
   registerRoleToDbRole,
 } from '@/lib/roles';
+import { notifyReviewerApplicationReceived } from '@/lib/notifications';
 
 export type UserRole = AppUserRole | null;
 
@@ -44,6 +45,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function triggerLegacyAbstractClaim() {
+  void fetch('/api/profile/claim-legacy-abstracts', { method: 'POST' }).catch(() => {
+    /* silencieux : la revendication est opportuniste */
+  });
+}
 
 async function fetchProfile(
   supabase: ReturnType<typeof createClient>,
@@ -121,11 +128,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
           const userProfile = await fetchProfile(supabase, session.user.id);
           setProfile(userProfile);
+          if (event === 'SIGNED_IN') {
+            triggerLegacyAbstractClaim();
+          }
         } else {
           setProfile(null);
         }
@@ -140,6 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
     await refreshProfile();
+    triggerLegacyAbstractClaim();
     return {};
   };
 
@@ -177,6 +188,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (signUpData.session && signUpData.user) {
       await refreshProfile();
+      triggerLegacyAbstractClaim();
     }
 
     if (signUpData.user?.id) {
@@ -200,6 +212,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }).catch(() => {
         /* e-mail secondaire */
       });
+
+      if (role === 'pair') {
+        void notifyReviewerApplicationReceived(supabase, signUpData.user.id);
+      }
     }
 
     return { needsEmailConfirmation };

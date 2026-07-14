@@ -46,6 +46,7 @@ export interface UserProfile {
   nom: string | null;
   prenom: string | null;
   institution: string | null;
+  pays: string | null;
   telephone: string | null;
   specialite: string | null;
   bio: string | null;

@@ -62,7 +62,7 @@ export default function AttestationPreviewSheet({
           <div style={{ fontSize: compact ? '14px' : '17px', color: '#475569', lineHeight: 1.35, whiteSpace: 'pre-line', marginTop: '8px' }}>{attestation.signatory_left_title}</div>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: compact ? '16px' : '18px', fontWeight: 700, color: '#7c3aed' }}>1ère édition</div>
+          <div style={{ fontSize: compact ? '16px' : '18px', fontWeight: 700, color: '#1B6B2E' }}>1ère édition</div>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ export interface StaffUserRow {
   id: string;
   nom: string | null;
   prenom: string | null;
+  email?: string | null;
   role: DbUserRole;
   is_student_verified: boolean;
   is_member_verified: boolean;
@@ -72,8 +73,27 @@ export async function updateUserRole(
   return error?.message ?? null;
 }
 
-export function formatUserDisplayName(user: Pick<StaffUserRow, 'prenom' | 'nom'>): string {
-  return [user.prenom, user.nom].filter(Boolean).join(' ') || 'Utilisateur';
+export function formatUserDisplayName(
+  user: Pick<StaffUserRow, 'prenom' | 'nom'> & { email?: string | null }
+): string {
+  const full = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+  if (full) return full;
+  const email = user.email?.trim();
+  if (email) return email.split('@')[0] || email;
+  return 'Utilisateur';
+}
+
+export async function fetchStaffUsersWithEmails(): Promise<StaffUserRow[]> {
+  const res = await fetch('/api/admin/users');
+  const data = (await res.json().catch(() => null)) as {
+    ok?: boolean;
+    users?: StaffUserRow[];
+    error?: string;
+  } | null;
+  if (!res.ok || !data?.ok || !data.users) {
+    throw new Error(data?.error || 'Impossible de charger les utilisateurs.');
+  }
+  return data.users;
 }
 
 export function formatRegistrationDate(iso: string): string {

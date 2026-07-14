@@ -29,6 +29,7 @@ import {
   parseDocumentsConfig,
 } from '@/lib/author-instructions';
 import { getEventDocumentSignedUrl } from '@/lib/event-documents';
+import { notifyAbstractSubmitted } from '@/lib/notifications';
 
 interface AuthorFormRow {
   id: number;
@@ -290,6 +291,10 @@ export default function SubmitAbstractPage() {
   };
 
   const handleGuideDownload = async () => {
+    if (instructionsDoc.public_url && !instructionsDoc.storage_path) {
+      window.open(instructionsDoc.public_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (!instructionsDoc.storage_path) return;
     const url = await getEventDocumentSignedUrl(supabase, instructionsDoc.storage_path);
     if (!url) {
@@ -342,7 +347,8 @@ export default function SubmitAbstractPage() {
       text: statut === 'Brouillon' ? 'Brouillon enregistré.' : 'Résumé soumis avec succès !',
     });
 
-    if (statut === 'Soumis') {
+    if (statut === 'Soumis' && targetId && user) {
+      void notifyAbstractSubmitted(supabase, user.id, targetId, title.trim());
       setTimeout(() => router.push('/dashboard/mes-resumes'), 1200);
     }
   };
@@ -408,7 +414,7 @@ export default function SubmitAbstractPage() {
                 <li key={file.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                     <span>📄</span>
-                    <button type="button" onClick={() => handleFileDownload(file)} style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: 'pointer', fontSize: '13px', fontWeight: 500, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <button type="button" onClick={() => handleFileDownload(file)} style={{ background: 'none', border: 'none', padding: 0, color: '#1B6B2E', cursor: 'pointer', fontSize: '13px', fontWeight: 500, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {file.file_name}
                     </button>
                   </div>
@@ -442,7 +448,7 @@ export default function SubmitAbstractPage() {
               border: '1px dashed #cbd5e1',
               borderRadius: '8px',
               background: '#fff',
-              color: files.length >= uploadRules.max_files ? '#94a3b8' : '#2563eb',
+              color: files.length >= uploadRules.max_files ? '#94a3b8' : '#1B6B2E',
               cursor: files.length >= uploadRules.max_files ? 'not-allowed' : 'pointer',
               fontSize: '13px',
               fontWeight: 500,
@@ -461,7 +467,7 @@ export default function SubmitAbstractPage() {
           <button type="button" disabled={saving} onClick={() => handleSave('Brouillon')} className="btn btn-outline" style={{ padding: '6px 16px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px' }}>
             {saving ? 'Enregistrement…' : 'Enregistrer brouillon'}
           </button>
-          <button type="button" disabled={saving} onClick={() => handleSave('Soumis')} className="btn btn-primary" style={{ padding: '6px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
+          <button type="button" disabled={saving} onClick={() => handleSave('Soumis')} className="btn btn-primary" style={{ padding: '6px 16px', backgroundColor: '#1B6B2E', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
             {saving ? 'Envoi…' : 'Soumettre'}
           </button>
         </div>
@@ -470,15 +476,15 @@ export default function SubmitAbstractPage() {
       <div className="editor-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '25px', position: 'sticky', top: '20px', minWidth: 0 }}>
 
         <div style={{
-          background: 'linear-gradient(160deg, #eff6ff 0%, #f8fafc 55%, #ffffff 100%)',
+          background: 'linear-gradient(160deg, #E8F5EC 0%, #f8fafc 55%, #ffffff 100%)',
           padding: '16px',
           borderRadius: '12px',
-          border: '1px solid #bfdbfe',
+          border: '1px solid #B7DFC0',
           minWidth: 0,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#1d4ed8', marginBottom: '6px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#145224', marginBottom: '6px' }}>
                 Guide officiel
               </div>
               <h3 style={{ fontSize: '14px', color: '#0f172a', margin: '0 0 6px', lineHeight: 1.35 }}>
@@ -491,12 +497,12 @@ export default function SubmitAbstractPage() {
             <span style={{
               flexShrink: 0,
               background: '#ffffff',
-              color: '#1e40af',
+              color: '#145224',
               fontSize: '10px',
               fontWeight: 700,
               padding: '4px 8px',
               borderRadius: '6px',
-              border: '1px solid #bfdbfe',
+              border: '1px solid #B7DFC0',
             }}>
               {guidePublished ? instructionFormatLabel(instructionsDoc.format) : 'En attente'}
             </span>
@@ -597,7 +603,7 @@ export default function SubmitAbstractPage() {
               </div>
             ))}
           </div>
-          <button type="button" onClick={addAuthor} style={{ width: '100%', border: '1px dashed #cbd5e1', background: 'transparent', padding: '10px', marginTop: '15px', borderRadius: '6px', color: '#2563eb', cursor: 'pointer', fontSize: '13px' }}>
+          <button type="button" onClick={addAuthor} style={{ width: '100%', border: '1px dashed #cbd5e1', background: 'transparent', padding: '10px', marginTop: '15px', borderRadius: '6px', color: '#1B6B2E', cursor: 'pointer', fontSize: '13px' }}>
             + Ajouter un co-auteur
           </button>
         </div>

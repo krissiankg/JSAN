@@ -50,7 +50,7 @@ export default function AttestationDetailPage({ params }: { params: Promise<{ id
       `}</style>
 
       <div className="no-print" style={{ maxWidth: '980px', margin: '0 auto 16px', display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-        <Link href="/dashboard/attestations" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>← Retour aux attestations</Link>
+        <Link href="/dashboard/attestations" style={{ color: '#1B6B2E', fontWeight: 600, textDecoration: 'none' }}>← Retour aux attestations</Link>
         <button type="button" onClick={() => window.print()} style={{ background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 600, cursor: 'pointer' }}>
           Télécharger / Imprimer en PDF
         </button>

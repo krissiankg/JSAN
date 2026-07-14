@@ -7,6 +7,7 @@ import {
   type EmailTemplateKey,
   type EmailTemplateRecord,
 } from '@/lib/email-templates';
+import { resolveEmailCtaUrl } from '@/lib/email-template-links';
 import { fetchActiveNewsletterSubscribers } from '@/lib/newsletter';
 
 export interface NewsletterSendResult {
@@ -41,7 +42,11 @@ export async function sendNewsletterCampaign(params: {
 
   const subscribers = await fetchActiveNewsletterSubscribers(params.supabase);
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim().replace(/\/$/, '') || 'https://snb-jsan.bj';
-  const ctaUrl = params.link.startsWith('http') ? params.link : `${base}${params.link.startsWith('/') ? '' : '/'}${params.link}`;
+  const ctaUrl = resolveEmailCtaUrl(base, {
+    templateKey: params.templateKey,
+    variables: params.variables,
+    overrideLink: params.link,
+  });
 
   let sent = 0;
   let failed = 0;

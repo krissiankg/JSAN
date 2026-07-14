@@ -66,7 +66,7 @@ export default function ResumeDetailPage() {
         <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '20px', borderRadius: '8px', maxWidth: '520px' }}>
           <h2 style={{ margin: '0 0 8px', fontSize: '18px' }}>Résumé introuvable</h2>
           <p style={{ margin: 0, fontSize: '14px' }}>{error ?? 'Ce résumé n\'existe pas ou n\'est pas accessible.'}</p>
-          <Link href="/dashboard/mes-resumes" style={{ display: 'inline-block', marginTop: '16px', color: '#2563eb', fontSize: '14px' }}>
+          <Link href="/dashboard/mes-resumes" style={{ display: 'inline-block', marginTop: '16px', color: '#1B6B2E', fontSize: '14px' }}>
             ← Retour à mes résumés
           </Link>
         </div>
@@ -145,7 +145,7 @@ export default function ResumeDetailPage() {
                 <span style={{ fontWeight: 600, color: '#1e293b' }}>
                   {author.prenom} {author.nom}
                   {author.est_orateur && (
-                    <span style={{ marginLeft: '6px', fontSize: '11px', background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '10px' }}>
+                    <span style={{ marginLeft: '6px', fontSize: '11px', background: '#E8F5EC', color: '#145224', padding: '2px 8px', borderRadius: '10px' }}>
                       Orateur
                     </span>
                   )}
@@ -170,7 +170,7 @@ export default function ResumeDetailPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
                   background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
-                  padding: '10px 14px', cursor: 'pointer', fontSize: '13px', color: '#2563eb', textAlign: 'left',
+                  padding: '10px 14px', cursor: 'pointer', fontSize: '13px', color: '#1B6B2E', textAlign: 'left',
                 }}
               >
                 📄 {file.file_name}

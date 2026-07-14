@@ -6,6 +6,7 @@ import CustomSelect from '../components/CustomSelect';
 import { useAuth } from './AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { fetchSponsors, getSponsorLogoUrl, groupSponsorsByLevel, SPONSOR_LEVEL_COLORS, type EventSponsor } from '@/lib/sponsors';
+import { TICKET_CATALOG } from '@/lib/tickets';
 import { useRegistrationsOpen } from '@/hooks/use-registrations-open';
 
 export default function Home() {
@@ -16,17 +17,13 @@ export default function Home() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [newsletterNotice, setNewsletterNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [contactNom, setContactNom] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactNotice, setContactNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [sponsors, setSponsors] = useState<EventSponsor[]>([]);
-  const tickets = [
-    { id: 1, title: 'Membre SNB - Étudiant', desc: 'Accès étudiant pour les membres actifs de la SNB.', price: '10 000 FCFA', img: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=400', category: 'Membre SNB' },
-    { id: 2, title: 'Membre SNB - Professionnel', desc: 'Accès professionnel pour les membres actifs.', price: '35 000 FCFA', img: 'https://images.unsplash.com/photo-1540317580384-e5d43616b9aa?auto=format&fit=crop&q=80&w=400', category: 'Membre SNB' },
-    { id: 3, title: 'Non-membre SNB - Étudiant', desc: 'Accès étudiant pour les non-membres.', price: '10 000 FCFA', img: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&q=80&w=400', category: 'Non-membre SNB' },
-    { id: 4, title: 'Non-membre SNB - Professionnel', desc: 'Accès chercheur / professionnel pour les non-membres.', price: '40 000 FCFA', img: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=400', category: 'Non-membre SNB' },
-    { id: 5, title: 'Formation Pré-Congrès', desc: 'Accès aux formations spécifiques du congrès.', price: '15 000 FCFA', img: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=400', category: 'Formation' },
-    { id: 6, title: 'Stand Expo - Étudiant', desc: 'Espace d\'exposition réservé aux projets étudiants.', price: '50 000 FCFA', img: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&q=80&w=400', category: 'Exposition' },
-    { id: 7, title: 'Stand Expo - Entreprise', desc: 'Espace d\'exposition premium pour les entreprises.', price: '75 000 FCFA', img: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=400', category: 'Exposition' },
-    { id: 8, title: 'Ticket Symposium', desc: 'Accès exclusif au Symposium (Partenariat/Sponsoring).', price: '2 000 000 FCFA', img: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=400', category: 'Symposium' },
-  ];
+  const tickets = TICKET_CATALOG;
 
   const handleBuyKkiapay = (ticketTitle: string) => {
     if (!isLoggedIn) {
@@ -85,6 +82,36 @@ export default function Home() {
       setNewsletterNotice({ type: 'error', text: 'Erreur réseau. Réessayez.' });
     } finally {
       setNewsletterLoading(false);
+    }
+  };
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactLoading(true);
+    setContactNotice(null);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: contactNom.trim(),
+          email: contactEmail.trim(),
+          message: contactMessage.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setContactNotice({ type: 'error', text: data.message || 'Envoi impossible.' });
+        return;
+      }
+      setContactNom('');
+      setContactEmail('');
+      setContactMessage('');
+      setContactNotice({ type: 'success', text: data.message || 'Message envoyé.' });
+    } catch {
+      setContactNotice({ type: 'error', text: 'Erreur réseau. Réessayez.' });
+    } finally {
+      setContactLoading(false);
     }
   };
 
@@ -227,8 +254,8 @@ export default function Home() {
         <p className="edition-intro-sub">organisée par la Société de Nutrition du Bénin, s'est déroulée du <strong>10 au 14 juin 2025</strong> au <strong>Palais des Congrès de Cotonou</strong>, en présentiel et en ligne.</p>
         
         <ul className="edition-stats-list">
-          <li><span className="bullet-check">✔</span> Plus de <strong>300 participants</strong></li>
-          <li><span className="bullet-check">✔</span> Une <strong>centaine de communications</strong> scientifiques</li>
+          <li><span className="bullet-check">✔</span> Des <strong>participants</strong> nationaux et internationaux</li>
+          <li><span className="bullet-check">✔</span> Des <strong>communications scientifiques</strong> orales et posters</li>
           <li><span className="bullet-check">✔</span> Des <strong>échanges riches</strong> autour des enjeux alimentaires en Afrique</li>
           <li><span className="bullet-check">✔</span> Des <strong>formations, panels et expositions</strong> interactives</li>
         </ul>
@@ -607,7 +634,7 @@ export default function Home() {
               <span className="faq-chevron">▼</span>
             </div>
             <div className="faq-answer">
-              <p>Les JSAN 2025 se déroulent à l'Université d'Abomey-Calavi (UAC), Campus d'Abomey-Calavi, Cotonou, Bénin, du 10 au 14 juin 2025.</p>
+              <p>Les JSAN 2025 se déroulent au Palais des Congrès de Cotonou, Bénin, du 10 au 14 juin 2025 (présentiel et en ligne).</p>
             </div>
           </div>
 
@@ -626,17 +653,62 @@ export default function Home() {
         <div className="faq-column reveal" id="contact">
           <div className="contact-form-mini">
             <h3>VOUS AVEZ ENCORE DES QUESTIONS ?</h3>
-            <form onSubmit={(e) => { e.preventDefault(); window.handleContact(e); }}>
+            <form onSubmit={handleContactSubmit}>
               <div className="form-group">
-                <input type="text" name="nom" id="contact-nom" placeholder="Votre nom" aria-label="Votre nom" autoComplete="name" required />
+                <input
+                  type="text"
+                  name="nom"
+                  id="contact-nom"
+                  placeholder="Votre nom"
+                  aria-label="Votre nom"
+                  autoComplete="name"
+                  required
+                  value={contactNom}
+                  onChange={(e) => setContactNom(e.target.value)}
+                  disabled={contactLoading}
+                />
               </div>
               <div className="form-group">
-                <input type="email" name="email" id="contact-email" placeholder="Votre e-mail" aria-label="Votre e-mail" autoComplete="email" required />
+                <input
+                  type="email"
+                  name="email"
+                  id="contact-email"
+                  placeholder="Votre e-mail"
+                  aria-label="Votre e-mail"
+                  autoComplete="email"
+                  required
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  disabled={contactLoading}
+                />
               </div>
               <div className="form-group">
-                <textarea name="message" id="contact-message" placeholder="Votre message..." aria-label="Votre message..." required></textarea>
+                <textarea
+                  name="message"
+                  id="contact-message"
+                  placeholder="Votre message..."
+                  aria-label="Votre message..."
+                  required
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  disabled={contactLoading}
+                />
               </div>
-              <button type="submit" className="btn btn-primary" style={{"width":"100%"}}>Envoyer le message</button>
+              {contactNotice && (
+                <p
+                  role="status"
+                  style={{
+                    margin: '0 0 12px',
+                    fontSize: '13px',
+                    color: contactNotice.type === 'success' ? '#166534' : '#b91c1c',
+                  }}
+                >
+                  {contactNotice.text}
+                </p>
+              )}
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={contactLoading}>
+                {contactLoading ? 'Envoi…' : 'Envoyer le message'}
+              </button>
             </form>
           </div>
         </div>
@@ -649,7 +721,12 @@ export default function Home() {
   {/* ===== FIXED BOTTOM BAR ===== */}
   <div className="global-bottom-bar">
     <div className="container bottom-bar-container">
-      <span className="copyright hidden-mobile">© 2025 SNB · JSAN. Tous droits réservés.</span>
+      <span className="copyright hidden-mobile">
+        © {new Date().getFullYear()} SNB · JSAN — Version 2.0 · Conçu par{' '}
+        <a href="https://guelichweb.online/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+          Guelichweb
+        </a>
+      </span>
       <div className="newsletter-inline">
         <span className="newsletter-text hidden-mobile">S'INSCRIRE À NOTRE NEWSLETTER</span>
         <input
@@ -723,7 +800,7 @@ export default function Home() {
                   setCustomAlert({ show: false, message: '' });
                   if (customAlert.action) customAlert.action();
                 }}
-                style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: 'pointer', width: '100%', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}
+                style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#1B6B2E', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: 'pointer', width: '100%', boxShadow: '0 4px 6px -1px rgba(27, 107, 46, 0.2)' }}
               >
                 Compris
               </button>

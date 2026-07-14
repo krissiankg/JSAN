@@ -176,7 +176,7 @@ export default function ManuscriptSubmissionsSection() {
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: 600 as const,
-    background: activeTab === tab ? '#7c3aed' : '#f1f5f9',
+    background: activeTab === tab ? '#1B6B2E' : '#f1f5f9',
     color: activeTab === tab ? '#fff' : '#64748b',
   });
 
@@ -257,7 +257,7 @@ export default function ManuscriptSubmissionsSection() {
                       onClick={() => openDetail(row)}
                       style={{
                         padding: '8px 16px', borderRadius: '8px', border: 'none',
-                        background: '#8b5cf6', color: '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+                        background: '#3D8A4F', color: '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
                         boxShadow: '0 4px 10px rgba(139,92,246,0.2)',
                       }}
                     >
@@ -321,7 +321,7 @@ export default function ManuscriptSubmissionsSection() {
                         <option key={ev.id} value={ev.id}>{evaluatorOptionLabel(ev)}</option>
                       ))}
                     </select>
-                    <button type="button" disabled={!pickEvaluatorId || assignLoading} onClick={handleAssign} style={{ padding: '10px 18px', borderRadius: '8px', border: 'none', background: '#8b5cf6', color: '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer', opacity: pickEvaluatorId ? 1 : 0.6 }}>
+                    <button type="button" disabled={!pickEvaluatorId || assignLoading} onClick={handleAssign} style={{ padding: '10px 18px', borderRadius: '8px', border: 'none', background: '#3D8A4F', color: '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer', opacity: pickEvaluatorId ? 1 : 0.6 }}>
                       Assigner
                     </button>
                   </div>
@@ -375,7 +375,7 @@ export default function ManuscriptSubmissionsSection() {
                     <option value="Soumis">⚠️ Demander des corrections à l&apos;auteur</option>
                     <option value="Rejete">❌ Refuser la publication</option>
                   </select>
-                  <button type="button" disabled={!decision || actionLoading} onClick={handleDecision} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#8b5cf6', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: decision ? 'pointer' : 'not-allowed', opacity: decision ? 1 : 0.6 }}>
+                  <button type="button" disabled={!decision || actionLoading} onClick={handleDecision} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#3D8A4F', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: decision ? 'pointer' : 'not-allowed', opacity: decision ? 1 : 0.6 }}>
                     {actionLoading ? 'Enregistrement…' : 'Confirmer la décision'}
                   </button>
                 </div>

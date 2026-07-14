@@ -20,7 +20,7 @@ const MAINTENANCE_EXEMPT_PREFIXES = [
 const MAINTENANCE_EXEMPT_EXACT = new Set(['/login']);
 
 const MAINTENANCE_WEBHOOK_PREFIXES = ['/api/kkiapay/webhook'];
-const MAINTENANCE_API_EXEMPT = ['/api/registrations/status', '/api/newsletter/subscribe'];
+const MAINTENANCE_API_EXEMPT = ['/api/registrations/status', '/api/newsletter/subscribe', '/api/kkiapay/public-config'];
 
 function isMaintenanceExemptPath(pathname: string): boolean {
   if (MAINTENANCE_EXEMPT_EXACT.has(pathname)) return true;

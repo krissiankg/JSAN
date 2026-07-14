@@ -100,6 +100,9 @@ export interface TicketRegistration {
   montant: number | null;
   statut_paiement: PaymentStatus;
   created_at: string;
+  badge_token?: string | null;
+  checked_in_at?: string | null;
+  checked_in_by?: string | null;
 }
 
 export function formatFcfa(amount: number | null): string {

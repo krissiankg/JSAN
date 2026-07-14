@@ -25,6 +25,7 @@ import {
   updateAttestationSettings,
 } from '@/lib/attestations';
 import { fetchAllUsersForStaff, formatUserDisplayName, type StaffUserRow } from '@/lib/users-admin';
+import { notifyAttestationAvailable } from '@/lib/notifications';
 
 type FormState = UserAttestationInput;
 
@@ -51,6 +52,7 @@ export default function AdminDocuments() {
   const { userRole } = useAuth();
   const supabase = useMemo(() => createClient(), []);
   const [settings, setSettings] = useState<AttestationSettings | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const [users, setUsers] = useState<StaffUserRow[]>([]);
   const [attestations, setAttestations] = useState<UserAttestation[]>([]);
   const [paidTicketUserIds, setPaidTicketUserIds] = useState<string[]>([]);
@@ -66,13 +68,14 @@ export default function AdminDocuments() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cfg, staffUsers, docs, paidTickets] = await Promise.all([
+    const [cfgResult, staffUsers, docs, paidTickets] = await Promise.all([
       fetchAttestationSettings(supabase),
       fetchAllUsersForStaff(supabase),
       fetchAttestationsForStaff(supabase),
       supabase.from('tickets_registrations').select('user_id').eq('statut_paiement', 'Paye'),
     ]);
-    setSettings(cfg);
+    setSettings(cfgResult.settings);
+    setSettingsError(cfgResult.error ?? (cfgResult.settings ? null : 'Aucune ligne dans events_config. Exécutez la migration 031 dans Supabase.'));
     setUsers(staffUsers);
     setAttestations(docs);
     setPaidTicketUserIds([...
@@ -147,18 +150,36 @@ export default function AdminDocuments() {
 
   const handleToggleRelease = async () => {
     if (!settings) return;
-    const err = await updateAttestationSettings(supabase, settings.id, !settings.attestations_enabled);
+    const opening = !settings.attestations_enabled;
+    const err = await updateAttestationSettings(supabase, settings.id, opening);
     if (err) {
       setMessage({ type: 'error', text: err });
       return;
     }
-    setSettings({ ...settings, attestations_enabled: !settings.attestations_enabled });
+    setSettings({ ...settings, attestations_enabled: opening });
     setMessage({
       type: 'success',
-      text: !settings.attestations_enabled
+      text: opening
         ? 'Le téléchargement des attestations est maintenant ouvert aux utilisateurs.'
         : 'Le téléchargement des attestations a été refermé.',
     });
+
+    if (opening) {
+      const userIds = [...new Set(attestations.map((att) => att.user_id))];
+      if (userIds.length) {
+        void fetch('/api/notify/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            templateKey: 'attestation_available',
+            audience: 'all',
+            link: '/dashboard/attestations',
+            variables: { nom_document: 'Vos attestations JSAN' },
+            filters: { userIds },
+          }),
+        });
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -179,6 +200,10 @@ export default function AdminDocuments() {
     if (err) {
       setMessage({ type: 'error', text: err });
       return;
+    }
+    const documentName = `${form.titre}${form.designation ? ` ${form.designation}` : ''}`.trim();
+    if (editingId === 'new' && settings?.attestations_enabled && form.user_id) {
+      void notifyAttestationAvailable(supabase, form.user_id, documentName);
     }
     setMessage({ type: 'success', text: editingId === 'new' ? 'Attestation créée.' : 'Attestation mise à jour.' });
     closeForm();
@@ -225,6 +250,12 @@ export default function AdminDocuments() {
     if (err) {
       setMessage({ type: 'error', text: err });
       return;
+    }
+    const documentName = `${form.titre}${form.designation ? ` ${form.designation}` : ''}`.trim();
+    if (settings?.attestations_enabled) {
+      for (const userId of bulkSelection) {
+        void notifyAttestationAvailable(supabase, userId, documentName);
+      }
     }
     setMessage({ type: 'success', text: 'Attestations générées en lot.' });
     setBulkSelection([]);
@@ -344,7 +375,7 @@ export default function AdminDocuments() {
     : null;
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1150px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+    <div className="page-shell" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Attestations &amp; Documents</h1>
@@ -360,19 +391,50 @@ export default function AdminDocuments() {
       </div>
 
       <div style={{ background: settings?.attestations_enabled ? '#f0fdf4' : '#fffbeb', border: `1px solid ${settings?.attestations_enabled ? '#bbf7d0' : '#fde68a'}`, borderRadius: '12px', padding: '18px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 280px' }}>
             <div style={{ fontWeight: 700, color: settings?.attestations_enabled ? '#166534' : '#b45309', marginBottom: '4px' }}>
               {settings?.attestations_enabled ? 'Téléchargement ouvert' : 'Téléchargement fermé'}
             </div>
-            <div style={{ fontSize: '13px', color: settings?.attestations_enabled ? '#166534' : '#92400e' }}>
-              Tant que ce bouton n'est pas ouvert, les utilisateurs ne voient pas leurs attestations dans leur espace.
+            <div style={{ fontSize: '13px', color: settings?.attestations_enabled ? '#166534' : '#92400e', lineHeight: 1.5 }}>
+              {settings
+                ? 'Cliquez sur le bouton ci-dessous pour autoriser ou bloquer l’accès des utilisateurs à leurs attestations.'
+                : settingsError ?? 'Configuration événement introuvable.'}
             </div>
           </div>
-          {settings && (
-            <button type="button" onClick={handleToggleRelease} style={{ ...buttonPrimary, background: settings.attestations_enabled ? '#92400e' : '#166534' }}>
+          {settings ? (
+            <button
+              type="button"
+              onClick={handleToggleRelease}
+              style={{
+                ...buttonPrimary,
+                background: settings.attestations_enabled ? '#92400e' : '#166534',
+                flexShrink: 0,
+                width: '100%',
+                maxWidth: '280px',
+              }}
+            >
               {settings.attestations_enabled ? 'Fermer les téléchargements' : 'Ouvrir les téléchargements'}
             </button>
+          ) : (
+            <div style={{
+              flexShrink: 0,
+              padding: '12px 14px',
+              borderRadius: '8px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#b91c1c',
+              fontSize: '13px',
+              lineHeight: 1.5,
+              width: '100%',
+              maxWidth: '320px',
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: '6px' }}>Bouton indisponible</div>
+              <div>{settingsError ?? 'Exécutez la migration 031 dans Supabase, puis rechargez cette page.'}</div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#7f1d1d' }}>
+                Vous pouvez aussi utiliser <strong>Paramètres → Attestations</strong>.
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -559,7 +621,7 @@ export default function AdminDocuments() {
             const checked = bulkSelection.includes(user.id);
             const alreadyExists = existingAttestationKeys.has(`${user.id}:${form.attestation_type}`);
             return (
-              <label key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', background: checked ? '#eff6ff' : 'transparent', opacity: alreadyExists ? 0.7 : 1 }}>
+              <label key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', background: checked ? '#E8F5EC' : 'transparent', opacity: alreadyExists ? 0.7 : 1 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input type="checkbox" checked={checked} onChange={() => toggleBulkUser(user.id)} />
                   <span>
@@ -645,7 +707,7 @@ export default function AdminDocuments() {
       <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '16px', margin: 0 }}>Attestations créées ({attestations.length})</h2>
-          <Link href="/dashboard/attestations" style={{ fontSize: '13px', color: '#2563eb', fontWeight: 600 }}>
+          <Link href="/dashboard/attestations" style={{ fontSize: '13px', color: '#1B6B2E', fontWeight: 600 }}>
             Voir la vue utilisateur →
           </Link>
         </div>

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyKkiapayTransaction } from '@/lib/kkiapay';
+import { sendTicketPaymentEmailServer } from '@/lib/ticket-payment-notify';
 
 export interface SettleResult {
   ok: boolean;
@@ -27,7 +28,7 @@ export async function settleTicketPayment(
 
   const { data: ticket, error: fetchErr } = await admin
     .from('tickets_registrations')
-    .select('id, montant, statut_paiement, transaction_id_kkiapay')
+    .select('id, user_id, type_billet, montant, statut_paiement, transaction_id_kkiapay')
     .eq('id', ticketId)
     .maybeSingle();
 
@@ -47,6 +48,18 @@ export async function settleTicketPayment(
         .from('tickets_registrations')
         .update({ statut_paiement: 'Echoue', transaction_id_kkiapay: transactionId })
         .eq('id', ticketId);
+      if (ticket.user_id) {
+        void sendTicketPaymentEmailServer(
+          {
+            id: ticket.id,
+            user_id: ticket.user_id,
+            type_billet: ticket.type_billet,
+            montant: ticket.montant,
+            transaction_id_kkiapay: transactionId,
+          },
+          'payment_failed'
+        );
+      }
       return { ok: false, status: 'echoue', message: `Paiement non abouti (${verification.status}).` };
     }
     return { ok: false, status: 'erreur', message: verification.error ?? 'Vérification Kkiapay impossible.' };
@@ -69,6 +82,19 @@ export async function settleTicketPayment(
     .eq('id', ticketId);
 
   if (updateErr) return { ok: false, status: 'erreur', message: updateErr.message };
+
+  if (ticket.user_id) {
+    void sendTicketPaymentEmailServer(
+      {
+        id: ticket.id,
+        user_id: ticket.user_id,
+        type_billet: ticket.type_billet,
+        montant: ticket.montant,
+        transaction_id_kkiapay: transactionId,
+      },
+      'payment_confirmed'
+    );
+  }
 
   return { ok: true, status: 'paye', message: 'Paiement confirmé.' };
 }

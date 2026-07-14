@@ -46,7 +46,7 @@ export const VISIO_PROVIDER_LABELS: Record<VisioProvider, string> = {
 };
 
 export const ROOM_COLORS = [
-  '#2563eb', '#10b981', '#f59e0b', '#8b5cf6',
+  '#1B6B2E', '#10b981', '#f59e0b', '#3D8A4F',
   '#ef4444', '#06b6d4', '#ec4899', '#64748b',
 ];
 

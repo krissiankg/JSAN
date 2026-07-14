@@ -31,12 +31,27 @@ export default function ProfilPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState<'etudiant' | 'membre' | null>(null);
 
+  useEffect(() => {
+    const openFromHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'preferences' || hash === 'notifications') {
+        setActiveTab('notifications');
+      } else if (hash === 'justificatifs' || hash === 'securite' || hash === 'informations') {
+        setActiveTab(hash);
+      }
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    return () => window.removeEventListener('hashchange', openFromHash);
+  }, []);
+
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
   const [telephone, setTelephone] = useState('');
   const [institution, setInstitution] = useState('');
   const [specialite, setSpecialite] = useState('');
   const [bio, setBio] = useState('');
+  const [pays, setPays] = useState('Bénin');
   const [countryCode, setCountryCode] = useState('+229');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -68,6 +83,7 @@ export default function ProfilPage() {
     setInstitution(profile.institution ?? '');
     setSpecialite(profile.specialite ?? '');
     setBio(profile.bio ?? '');
+    setPays(profile.pays?.trim() || 'Bénin');
     if (profile.telephone) {
       const match = countries.find((c) => profile.telephone?.startsWith(c.code));
       if (match) {
@@ -131,13 +147,16 @@ export default function ProfilPage() {
         institution: institution || null,
         specialite: specialite || null,
         bio: bio.trim() || null,
+        pays: pays.trim() || null,
       })
       .eq('id', user.id);
 
     setSaving(false);
 
     if (error) {
-      const hint = error.message.includes('bio')
+      const hint = error.message.includes('pays')
+        ? ' Exécutez la migration 036 dans Supabase (backend/migrations/036_profile_pays_and_checkin.sql).'
+        : error.message.includes('bio')
         ? ' Exécutez la migration 007 dans Supabase (backend/migrations/007_profile_bio.sql).'
         : '';
       setSaveMessage({ type: 'error', text: `Erreur : ${error.message}.${hint}` });
@@ -311,7 +330,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div className="dashboard-content">
+    <div className="dashboard-page">
       <div className="header-actions" style={{ marginBottom: '30px' }}>
         <p style={{ color: '#64748b', fontSize: '14px' }}>
           {getRoleLabel(userRole)} — Gérez vos informations personnelles et vos justificatifs.
@@ -385,7 +404,7 @@ export default function ProfilPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
+              <div className="profile-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px' }}>
                 <div className="form-group-profile">
                   <label>Prénom</label>
                   <input type="text" className="form-input-profile" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
@@ -416,14 +435,32 @@ export default function ProfilPage() {
               )}
 
               <div className="form-group-profile">
-                <label>Pays et numéro de téléphone</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <select className="form-input-profile" style={{ width: 'auto', minWidth: '160px', fontWeight: 500 }} value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+                <label>Pays de résidence</label>
+                <select
+                  className="form-input-profile"
+                  value={pays}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setPays(next);
+                    const match = countries.find((c) => c.name === next);
+                    if (match) setCountryCode(match.code);
+                  }}
+                >
+                  {countries.map((c) => (
+                    <option key={c.name} value={c.name}>{c.flag} {c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group-profile">
+                <label>Indicatif et numéro de téléphone</label>
+                <div className="profile-phone-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <select className="form-input-profile" style={{ width: 'auto', minWidth: '160px', fontWeight: 500, flex: '1 1 160px' }} value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
                     {countries.map((c, idx) => (
                       <option key={idx} value={c.code}>{c.flag} {c.name} ({c.code})</option>
                     ))}
                   </select>
-                  <input type="tel" className="form-input-profile" placeholder="Ex: 90 00 00 00" style={{ flex: 1 }} value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+                  <input type="tel" className="form-input-profile" placeholder="Ex: 90 00 00 00" style={{ flex: '2 1 180px', minWidth: 0 }} value={telephone} onChange={(e) => setTelephone(e.target.value)} />
                 </div>
               </div>
 
@@ -438,7 +475,7 @@ export default function ProfilPage() {
           {activeTab === 'justificatifs' && (
             <div className="profile-section">
               <h2>Documents Justificatifs</h2>
-              <div className="profile-section-desc" style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #3b82f6', marginBottom: '25px' }}>
+              <div className="profile-section-desc" style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #1B6B2E', marginBottom: '25px' }}>
                 <p style={{ margin: '0 0 10px 0', fontWeight: 500, color: '#1e293b' }}>
                   Afin d&apos;acheter un billet à tarif réduit, nous devons vérifier votre statut étudiant ou membre SNB.
                 </p>
@@ -610,7 +647,7 @@ export default function ProfilPage() {
           )}
 
           {activeTab === 'notifications' && (
-            <form className="profile-section" onSubmit={handleSaveNotifications}>
+            <form id="preferences" className="profile-section" onSubmit={handleSaveNotifications}>
               <h2>Préférences de Notifications</h2>
               <p className="profile-section-desc">
                 Gérez les alertes affichées dans l&apos;application (icône cloche) et les e-mails reçus.

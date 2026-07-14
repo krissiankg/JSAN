@@ -44,8 +44,11 @@ Dans `jsan-webapp/.env.local` (et sur Netlify en prod) :
 ```bash
 RESEND_API_KEY=re_xxxxxxxx
 EMAIL_FROM=JSAN 2025 <no-reply@mail.snb-jsan.bj>
+CONTACT_EMAIL=secretariat@snb-jsan.bj
 NEXT_PUBLIC_APP_URL=https://votre-app.netlify.app
 ```
+
+`CONTACT_EMAIL` = boîte qui reçoit les messages du formulaire de contact (défaut : `secretariat@snb-jsan.bj`).
 
 Pas besoin de créer une vraie boîte `no-reply@mail.snb-jsan.bj` — l'expéditeur est signé par DKIM.
 

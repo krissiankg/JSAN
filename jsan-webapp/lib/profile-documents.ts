@@ -174,6 +174,7 @@ export interface PendingVerificationRow {
     role: DbUserRole;
     created_at: string;
     telephone: string | null;
+    email?: string | null;
   };
 }
 

@@ -8,8 +8,10 @@ import { createClient } from '@/lib/supabase/client';
 import {
   buildInstructionsArticlePayload,
   buildInstructionsResumePayload,
+  buildEvaluationCriteriaPayload,
   DEFAULT_ARTICLE_INSTRUCTIONS,
   DEFAULT_RESUME_INSTRUCTIONS,
+  DEFAULT_EVALUATION_CRITERIA,
   instructionFormatLabel,
   isInstructionDocumentPublished,
   parseDocumentsConfig,
@@ -31,6 +33,94 @@ import {
   DEFAULT_REGISTRATIONS_CLOSED_MESSAGE,
   updateRegistrationsSettings,
 } from '@/lib/registrations';
+import {
+  fetchAttestationSettings,
+  updateAttestationSettings,
+} from '@/lib/attestations';
+import { fetchDoubleBlindEnabled, setDoubleBlindEnabled } from '@/lib/review-mode';
+import CommitteeSettingsPanel from '@/components/dashboard/CommitteeSettingsPanel';
+import { OFFICIAL_PUBLIC_DOCS } from '@/lib/official-docs';
+
+const CRITERES_FOLDER = 'criteres-evaluation';
+
+const cardBase: React.CSSProperties = {
+  background: '#fff',
+  borderRadius: '14px',
+  padding: '20px 22px',
+  border: '1px solid #e2e8f0',
+  height: '100%',
+  boxSizing: 'border-box',
+  display: 'flex',
+  flexDirection: 'column',
+};
+
+function StatusToggleRow({
+  active,
+  activeLabel,
+  inactiveLabel,
+  activeHint,
+  inactiveHint,
+  activeBtn,
+  inactiveBtn,
+  busy,
+  disabled,
+  onToggle,
+}: {
+  active: boolean;
+  activeLabel: string;
+  inactiveLabel: string;
+  activeHint: string;
+  inactiveHint: string;
+  activeBtn: string;
+  inactiveBtn: string;
+  busy: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        padding: '12px 14px',
+        background: active ? '#f0fdf4' : '#fffbeb',
+        border: `1px solid ${active ? '#bbf7d0' : '#fde68a'}`,
+        borderRadius: '10px',
+        marginBottom: '14px',
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 700, color: active ? '#166534' : '#b45309', marginBottom: '2px', fontSize: '14px' }}>
+          {active ? activeLabel : inactiveLabel}
+        </div>
+        <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+          {active ? activeHint : inactiveHint}
+        </div>
+      </div>
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={onToggle}
+        style={{
+          flexShrink: 0,
+          border: 'none',
+          borderRadius: '8px',
+          padding: '9px 14px',
+          fontWeight: 600,
+          fontSize: '13px',
+          cursor: disabled || busy ? 'not-allowed' : 'pointer',
+          background: active ? '#b45309' : '#166534',
+          color: '#fff',
+          opacity: disabled || busy ? 0.7 : 1,
+        }}
+      >
+        {busy ? '…' : active ? activeBtn : inactiveBtn}
+      </button>
+    </div>
+  );
+}
 
 function GuideUploadBlock({
   title,
@@ -54,70 +144,114 @@ function GuideUploadBlock({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div style={{ background: '#ffffff', borderRadius: '12px', padding: '30px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>{title}</h2>
-      <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '24px' }}>{description}</p>
+    <div style={cardBase}>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>{title}</h2>
+      <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.5 }}>{description}</p>
 
       {isInstructionDocumentPublished(doc) ? (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
-          padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '16px',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            padding: '12px 14px',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            marginBottom: '14px',
+          }}
+        >
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               📄 {doc.file_name}
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
               {instructionFormatLabel(doc.format)}
-              {doc.uploaded_at && ` · Publié le ${new Date(doc.uploaded_at).toLocaleDateString('fr-FR')}`}
+              {doc.uploaded_at && ` · ${new Date(doc.uploaded_at).toLocaleDateString('fr-FR')}`}
+              {doc.public_url && !doc.storage_path && ' · fichier officiel'}
             </div>
+            {doc.public_url && !doc.storage_path && (
+              <a href={doc.public_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#1B6B2E', fontWeight: 600, marginTop: '4px', display: 'inline-block' }}>
+                Ouvrir →
+              </a>
+            )}
           </div>
           <button
             type="button"
             disabled={removing}
             onClick={onRemove}
-            style={{ flexShrink: 0, background: 'transparent', border: '1px solid #fca5a5', color: '#dc2626', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+            style={{
+              flexShrink: 0,
+              background: 'transparent',
+              border: '1px solid #fca5a5',
+              color: '#dc2626',
+              padding: '7px 12px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}
           >
             {removing ? '…' : 'Retirer'}
           </button>
         </div>
       ) : (
-        <div style={{ padding: '16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', marginBottom: '16px', fontSize: '0.9rem', color: '#92400e' }}>
-          Aucun guide publié. Les auteurs verront un message d&apos;attente sur le formulaire.
+        <div
+          style={{
+            padding: '12px 14px',
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: '10px',
+            marginBottom: '14px',
+            fontSize: '13px',
+            color: '#92400e',
+            lineHeight: 1.45,
+          }}
+        >
+          Aucun guide publié. Les auteurs verront un message d&apos;attente.
         </div>
       )}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={INSTRUCTION_ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) onUpload(file);
-        }}
-        style={{ display: 'none' }}
-      />
-      <button
-        type="button"
-        disabled={uploading || disabled}
-        onClick={() => fileInputRef.current?.click()}
-        style={{
-          width: '100%', padding: '12px', borderRadius: '8px', border: 'none',
-          background: '#1e3a5f', color: '#fff', fontWeight: 600, fontSize: '0.95rem',
-          cursor: uploading || disabled ? 'not-allowed' : 'pointer',
-          opacity: uploading || disabled ? 0.7 : 1,
-        }}
-      >
-        {uploading
-          ? 'Publication en cours…'
-          : isInstructionDocumentPublished(doc)
-            ? 'Remplacer le document'
-            : 'Publier le guide (PDF ou Word)'}
-      </button>
-      <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '8px' }}>
-        Formats : {INSTRUCTION_ALLOWED_EXTENSIONS.join(', ')} — max 20 Mo
-      </p>
+      <div style={{ marginTop: 'auto' }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={INSTRUCTION_ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) onUpload(file);
+          }}
+          style={{ display: 'none' }}
+        />
+        <button
+          type="button"
+          disabled={uploading || disabled}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            width: '100%',
+            padding: '11px',
+            borderRadius: '8px',
+            border: 'none',
+            background: '#0f172a',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: '13px',
+            cursor: uploading || disabled ? 'not-allowed' : 'pointer',
+            opacity: uploading || disabled ? 0.7 : 1,
+          }}
+        >
+          {uploading
+            ? 'Publication en cours…'
+            : isInstructionDocumentPublished(doc)
+              ? 'Remplacer le document'
+              : 'Publier le guide (PDF ou Word)'}
+        </button>
+        <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0' }}>
+          Formats : {INSTRUCTION_ALLOWED_EXTENSIONS.join(', ')} — max 20 Mo
+        </p>
+      </div>
     </div>
   );
 }
@@ -129,10 +263,13 @@ export default function ParametresPage() {
   const [eventConfigId, setEventConfigId] = useState<string | null>(null);
   const [resumeInstructions, setResumeInstructions] = useState<InstructionDocument>(DEFAULT_RESUME_INSTRUCTIONS);
   const [articleInstructions, setArticleInstructions] = useState<InstructionDocument>(DEFAULT_ARTICLE_INSTRUCTIONS);
+  const [criteresEvaluation, setCriteresEvaluation] = useState<InstructionDocument>(DEFAULT_EVALUATION_CRITERIA);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [uploadingArticle, setUploadingArticle] = useState(false);
+  const [uploadingCriteres, setUploadingCriteres] = useState(false);
   const [removingResume, setRemovingResume] = useState(false);
   const [removingArticle, setRemovingArticle] = useState(false);
+  const [removingCriteres, setRemovingCriteres] = useState(false);
   const [guideMessage, setGuideMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState(DEFAULT_MAINTENANCE_MESSAGE);
@@ -142,12 +279,16 @@ export default function ParametresPage() {
     DEFAULT_REGISTRATIONS_CLOSED_MESSAGE
   );
   const [registrationsSaving, setRegistrationsSaving] = useState(false);
+  const [attestationsEnabled, setAttestationsEnabled] = useState(false);
+  const [attestationsSaving, setAttestationsSaving] = useState(false);
+  const [doubleBlindEnabled, setDoubleBlindEnabledState] = useState(true);
+  const [doubleBlindSaving, setDoubleBlindSaving] = useState(false);
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase
         .from('events_config')
-        .select('id, documents_config, maintenance_mode, maintenance_message, registrations_open, registrations_closed_message')
+        .select('id, documents_config, maintenance_mode, maintenance_message, registrations_open, registrations_closed_message, double_aveugle_actif')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -156,12 +297,22 @@ export default function ParametresPage() {
         const config = parseDocumentsConfig(data.documents_config);
         setResumeInstructions(config.instructions_resume);
         setArticleInstructions(config.instructions_article);
+        setCriteresEvaluation(config.criteres_evaluation);
         setMaintenanceEnabled(Boolean(data.maintenance_mode));
         setMaintenanceMessage(data.maintenance_message?.trim() || DEFAULT_MAINTENANCE_MESSAGE);
         setRegistrationsOpen(data.registrations_open !== false);
         setRegistrationsClosedMessage(
           data.registrations_closed_message?.trim() || DEFAULT_REGISTRATIONS_CLOSED_MESSAGE
         );
+        setDoubleBlindEnabledState(data.double_aveugle_actif !== false);
+      }
+      const { settings: attSettings } = await fetchAttestationSettings(supabase);
+      if (attSettings) {
+        setAttestationsEnabled(attSettings.attestations_enabled);
+      }
+      if (!data) {
+        const blind = await fetchDoubleBlindEnabled(supabase);
+        setDoubleBlindEnabledState(blind);
       }
     }
     load();
@@ -237,16 +388,20 @@ export default function ParametresPage() {
     setRemoving: (v: boolean) => void
   ) => {
     if (!isInstructionDocumentPublished(currentDoc)) return;
-    if (!confirm('Retirer ce guide des auteurs ?')) return;
+    if (!confirm('Retirer ce document (revenir au fichier officiel par défaut si disponible) ?')) return;
 
     setRemoving(true);
     setGuideMessage(null);
 
     const oldPath = currentDoc.storage_path;
-    const cleared: InstructionDocument = {
-      title: currentDoc.title,
-      description: currentDoc.description,
-    };
+    const cleared: InstructionDocument =
+      key === 'instructions_resume'
+        ? { ...DEFAULT_RESUME_INSTRUCTIONS }
+        : key === 'criteres_evaluation'
+          ? { ...DEFAULT_EVALUATION_CRITERIA }
+          : key === 'instructions_article'
+            ? { ...DEFAULT_ARTICLE_INSTRUCTIONS }
+            : { title: currentDoc.title, description: currentDoc.description };
 
     const saveError = await persistInstructionDoc(key, cleared);
     if (saveError) {
@@ -255,10 +410,10 @@ export default function ParametresPage() {
       return;
     }
 
-    await removeInstructionDocument(supabase, oldPath);
+    if (oldPath) await removeInstructionDocument(supabase, oldPath);
     setDoc(cleared);
     setRemoving(false);
-    setGuideMessage({ type: 'success', text: 'Guide retiré.' });
+    setGuideMessage({ type: 'success', text: 'Document mis à jour.' });
   };
 
   const handleMaintenanceToggle = async () => {
@@ -339,260 +494,354 @@ export default function ParametresPage() {
     setGuideMessage({ type: 'success', text: 'Message d’inscriptions fermées enregistré.' });
   };
 
+  const handleAttestationsToggle = async () => {
+    if (!eventConfigId) return;
+    setAttestationsSaving(true);
+    setGuideMessage(null);
+    const next = !attestationsEnabled;
+    const err = await updateAttestationSettings(supabase, eventConfigId, next);
+    setAttestationsSaving(false);
+    if (err) {
+      setGuideMessage({ type: 'error', text: err });
+      return;
+    }
+    setAttestationsEnabled(next);
+    setGuideMessage({
+      type: 'success',
+      text: next
+        ? 'Téléchargement des attestations ouvert — les utilisateurs voient leurs documents.'
+        : 'Téléchargement des attestations fermé.',
+    });
+  };
+
+  const handleDoubleBlindToggle = async () => {
+    if (!eventConfigId) return;
+    setDoubleBlindSaving(true);
+    setGuideMessage(null);
+    const next = !doubleBlindEnabled;
+    const err = await setDoubleBlindEnabled(supabase, eventConfigId, next);
+    setDoubleBlindSaving(false);
+    if (err) {
+      setGuideMessage({ type: 'error', text: err });
+      return;
+    }
+    setDoubleBlindEnabledState(next);
+    setGuideMessage({
+      type: 'success',
+      text: next
+        ? 'Double aveugle activé — les évaluateurs ne voient pas l’identité des auteurs.'
+        : 'Double aveugle désactivé — les évaluateurs peuvent voir le nom des auteurs.',
+    });
+  };
+
+  const textareaStyle: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1px solid #cbd5e1',
+    fontSize: '13px',
+    lineHeight: 1.5,
+    resize: 'vertical',
+    marginBottom: '10px',
+    fontFamily: 'inherit',
+  };
+
+  const saveBtnStyle = (busy: boolean): React.CSSProperties => ({
+    background: '#0f172a',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '9px 14px',
+    fontWeight: 600,
+    fontSize: '13px',
+    cursor: !eventConfigId || busy ? 'not-allowed' : 'pointer',
+    opacity: !eventConfigId || busy ? 0.7 : 1,
+    alignSelf: 'flex-start',
+  });
+
   return (
-    <div style={{ padding: '30px', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="page-shell">
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 6px', color: '#0f172a' }}>Paramètres</h1>
+        <p style={{ margin: 0, color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>
+          Accès public, inscriptions, attestations et guides auteurs.
+        </p>
+      </div>
 
       {guideMessage && (
-        <div style={{
-          padding: '12px 16px', borderRadius: '8px',
-          background: guideMessage.type === 'success' ? '#dcfce7' : '#fef2f2',
-          color: guideMessage.type === 'success' ? '#166534' : '#b91c1c',
-          border: `1px solid ${guideMessage.type === 'success' ? '#86efac' : '#fca5a5'}`,
-          fontSize: '0.9rem',
-        }}>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: '10px',
+            background: guideMessage.type === 'success' ? '#dcfce7' : '#fef2f2',
+            color: guideMessage.type === 'success' ? '#166534' : '#b91c1c',
+            border: `1px solid ${guideMessage.type === 'success' ? '#86efac' : '#fca5a5'}`,
+            fontSize: '13px',
+            marginBottom: '16px',
+          }}
+        >
           {guideMessage.text}
         </div>
       )}
 
-      <div style={{
-        background: maintenanceEnabled ? '#fffbeb' : '#ffffff',
-        borderRadius: '12px',
-        padding: '30px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        border: `1px solid ${maintenanceEnabled ? '#fde68a' : '#e2e8f0'}`,
-      }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>
-          Mode maintenance
+      {/* Accès plateforme — 2 colonnes */}
+      <section style={{ marginBottom: '18px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px' }}>
+          Accès plateforme
         </h2>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px', lineHeight: 1.6 }}>
-          Activez cette option pendant vos tests en production. Le public verra une page sobre « Site en maintenance ».
-          Les comptes <strong>organisateur</strong> et <strong>super admin</strong> conservent l&apos;accès complet via <code>/login</code>.
-        </p>
-
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          padding: '14px 16px',
-          background: maintenanceEnabled ? '#fef3c7' : '#f8fafc',
-          border: `1px solid ${maintenanceEnabled ? '#fcd34d' : '#e2e8f0'}`,
-          borderRadius: '10px',
-          marginBottom: '16px',
-        }}>
-          <div>
-            <div style={{ fontWeight: 700, color: maintenanceEnabled ? '#b45309' : '#166534', marginBottom: '4px' }}>
-              {maintenanceEnabled ? 'Maintenance active' : 'Site public ouvert'}
-            </div>
-            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-              {maintenanceEnabled
-                ? 'Les visiteurs et utilisateurs non-staff sont redirigés.'
-                : 'Tout le monde peut accéder normalement au site.'}
-            </div>
-          </div>
-          <button
-            type="button"
-            disabled={!eventConfigId || maintenanceSaving}
-            onClick={handleMaintenanceToggle}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '16px',
+            alignItems: 'stretch',
+          }}
+        >
+          <div
             style={{
-              flexShrink: 0,
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 16px',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              cursor: !eventConfigId || maintenanceSaving ? 'not-allowed' : 'pointer',
-              background: maintenanceEnabled ? '#166534' : '#b45309',
-              color: '#fff',
-              opacity: !eventConfigId || maintenanceSaving ? 0.7 : 1,
+              ...cardBase,
+              background: maintenanceEnabled ? '#fffbeb' : '#fff',
+              border: `1px solid ${maintenanceEnabled ? '#fde68a' : '#e2e8f0'}`,
             }}
           >
-            {maintenanceSaving ? '…' : maintenanceEnabled ? 'Désactiver' : 'Activer'}
-          </button>
-        </div>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Mode maintenance</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Le public voit une page « Site en maintenance ». Les organisateurs gardent l&apos;accès via <code>/login</code>.
+            </p>
 
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
-          Message affiché au public
-        </label>
-        <textarea
-          value={maintenanceMessage}
-          onChange={(e) => setMaintenanceMessage(e.target.value)}
-          rows={3}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '12px 14px',
-            borderRadius: '8px',
-            border: '1px solid #cbd5e1',
-            fontSize: '0.9rem',
-            lineHeight: 1.5,
-            resize: 'vertical',
-            marginBottom: '12px',
-          }}
-        />
-        <button
-          type="button"
-          disabled={!eventConfigId || maintenanceSaving}
-          onClick={handleMaintenanceMessageSave}
-          style={{
-            background: '#111827',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 16px',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            cursor: !eventConfigId || maintenanceSaving ? 'not-allowed' : 'pointer',
-            opacity: !eventConfigId || maintenanceSaving ? 0.7 : 1,
-          }}
-        >
-          Enregistrer le message
-        </button>
-      </div>
+            <StatusToggleRow
+              active={!maintenanceEnabled}
+              activeLabel="Site public ouvert"
+              inactiveLabel="Maintenance active"
+              activeHint="Tout le monde peut accéder normalement."
+              inactiveHint="Visiteurs et non-staff sont redirigés."
+              activeBtn="Activer maintenance"
+              inactiveBtn="Désactiver"
+              busy={maintenanceSaving}
+              disabled={!eventConfigId}
+              onToggle={handleMaintenanceToggle}
+            />
 
-      <div style={{
-        background: registrationsOpen ? '#ffffff' : '#fffbeb',
-        borderRadius: '12px',
-        padding: '30px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        border: `1px solid ${registrationsOpen ? '#e2e8f0' : '#fde68a'}`,
-      }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>
-          Inscriptions plateforme
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px', lineHeight: 1.6 }}>
-          Fermez les inscriptions pour empêcher la création de nouveaux comptes (participant, auteur, évaluateur),
-          tout en laissant le site public et la connexion accessibles aux comptes existants.
-          Distinct du mode maintenance ci-dessus.
-        </p>
-
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          padding: '14px 16px',
-          background: registrationsOpen ? '#f0fdf4' : '#fef3c7',
-          border: `1px solid ${registrationsOpen ? '#bbf7d0' : '#fcd34d'}`,
-          borderRadius: '10px',
-          marginBottom: '16px',
-        }}>
-          <div>
-            <div style={{ fontWeight: 700, color: registrationsOpen ? '#166534' : '#b45309', marginBottom: '4px' }}>
-              {registrationsOpen ? 'Inscriptions ouvertes' : 'Inscriptions fermées'}
-            </div>
-            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-              {registrationsOpen
-                ? 'Tout le monde peut créer un compte via /register.'
-                : 'Les visiteurs voient « Inscriptions closes » — /login reste disponible.'}
-            </div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              Message affiché au public
+            </label>
+            <textarea
+              value={maintenanceMessage}
+              onChange={(e) => setMaintenanceMessage(e.target.value)}
+              rows={3}
+              style={textareaStyle}
+            />
+            <button
+              type="button"
+              disabled={!eventConfigId || maintenanceSaving}
+              onClick={handleMaintenanceMessageSave}
+              style={saveBtnStyle(maintenanceSaving)}
+            >
+              Enregistrer le message
+            </button>
           </div>
-          <button
-            type="button"
-            disabled={!eventConfigId || registrationsSaving}
-            onClick={handleRegistrationsToggle}
+
+          <div
             style={{
-              flexShrink: 0,
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 16px',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              cursor: !eventConfigId || registrationsSaving ? 'not-allowed' : 'pointer',
-              background: registrationsOpen ? '#b45309' : '#166534',
-              color: '#fff',
-              opacity: !eventConfigId || registrationsSaving ? 0.7 : 1,
+              ...cardBase,
+              background: registrationsOpen ? '#fff' : '#fffbeb',
+              border: `1px solid ${registrationsOpen ? '#e2e8f0' : '#fde68a'}`,
             }}
           >
-            {registrationsSaving ? '…' : registrationsOpen ? 'Fermer' : 'Ouvrir'}
-          </button>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Inscriptions</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Fermez la création de nouveaux comptes sans bloquer le site ni la connexion des comptes existants.
+            </p>
+
+            <StatusToggleRow
+              active={registrationsOpen}
+              activeLabel="Inscriptions ouvertes"
+              inactiveLabel="Inscriptions fermées"
+              activeHint="Création de compte possible via /register."
+              inactiveHint="/login reste disponible pour les comptes existants."
+              activeBtn="Fermer"
+              inactiveBtn="Ouvrir"
+              busy={registrationsSaving}
+              disabled={!eventConfigId}
+              onToggle={handleRegistrationsToggle}
+            />
+
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              Message si inscriptions fermées
+            </label>
+            <textarea
+              value={registrationsClosedMessage}
+              onChange={(e) => setRegistrationsClosedMessage(e.target.value)}
+              rows={3}
+              style={textareaStyle}
+            />
+            <button
+              type="button"
+              disabled={!eventConfigId || registrationsSaving}
+              onClick={handleRegistrationsMessageSave}
+              style={saveBtnStyle(registrationsSaving)}
+            >
+              Enregistrer le message
+            </button>
+          </div>
         </div>
+      </section>
 
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
-          Message affiché lorsque les inscriptions sont fermées
-        </label>
-        <textarea
-          value={registrationsClosedMessage}
-          onChange={(e) => setRegistrationsClosedMessage(e.target.value)}
-          rows={3}
+      {/* Attestations + Paiements — bandeau */}
+      <section style={{ marginBottom: '18px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px' }}>
+          Services
+        </h2>
+        <div
           style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '12px 14px',
-            borderRadius: '8px',
-            border: '1px solid #cbd5e1',
-            fontSize: '0.9rem',
-            lineHeight: 1.5,
-            resize: 'vertical',
-            marginBottom: '12px',
-          }}
-        />
-        <button
-          type="button"
-          disabled={!eventConfigId || registrationsSaving}
-          onClick={handleRegistrationsMessageSave}
-          style={{
-            background: '#111827',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 16px',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            cursor: !eventConfigId || registrationsSaving ? 'not-allowed' : 'pointer',
-            opacity: !eventConfigId || registrationsSaving ? 0.7 : 1,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px',
           }}
         >
-          Enregistrer le message
-        </button>
-      </div>
+          <div
+            style={{
+              ...cardBase,
+              background: attestationsEnabled ? '#f0fdf4' : '#fffbeb',
+              border: `1px solid ${attestationsEnabled ? '#bbf7d0' : '#fde68a'}`,
+            }}
+          >
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Attestations</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Contrôlez quand les participants peuvent télécharger leurs attestations.
+            </p>
+            <StatusToggleRow
+              active={attestationsEnabled}
+              activeLabel="Téléchargement ouvert"
+              inactiveLabel="Téléchargement fermé"
+              activeHint="Visibles dans l’espace Attestations."
+              inactiveHint="Invisibles côté participant."
+              activeBtn="Fermer"
+              inactiveBtn="Ouvrir"
+              busy={attestationsSaving}
+              disabled={!eventConfigId}
+              onToggle={handleAttestationsToggle}
+            />
+          </div>
 
-      <GuideUploadBlock
-        title="Guide — soumission des résumés"
-        description="Document officiel (PDF ou Word) téléchargé par les auteurs lors de la soumission d'un résumé."
-        doc={resumeInstructions}
-        uploading={uploadingResume}
-        removing={removingResume}
-        disabled={!eventConfigId}
-        onUpload={(file) => handleGuideUpload(
-          'instructions_resume', INSTRUCTIONS_RESUME_FOLDER, resumeInstructions, setResumeInstructions,
-          setUploadingResume, buildInstructionsResumePayload, file
-        )}
-        onRemove={() => handleGuideRemove('instructions_resume', resumeInstructions, setResumeInstructions, setRemovingResume)}
-      />
+          <div
+            style={{
+              ...cardBase,
+              background: doubleBlindEnabled ? '#E8F5EC' : '#fff',
+              border: `1px solid ${doubleBlindEnabled ? '#B7DFC0' : '#e2e8f0'}`,
+            }}
+          >
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Évaluation en double aveugle</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Quand c&apos;est actif, les évaluateurs ne voient ni le nom ni l&apos;affiliation des auteurs (RLS + interface).
+            </p>
+            <StatusToggleRow
+              active={doubleBlindEnabled}
+              activeLabel="Double aveugle actif"
+              inactiveLabel="Identités visibles"
+              activeHint="Auteurs anonymes pour les évaluateurs."
+              inactiveHint="Les évaluateurs voient le nom de l’auteur."
+              activeBtn="Désactiver"
+              inactiveBtn="Activer"
+              busy={doubleBlindSaving}
+              disabled={!eventConfigId}
+              onToggle={handleDoubleBlindToggle}
+            />
+          </div>
 
-      <GuideUploadBlock
-        title="Guide — articles complets"
-        description="Document officiel (PDF ou Word) téléchargé par les auteurs lors de la soumission d'un article complet."
-        doc={articleInstructions}
-        uploading={uploadingArticle}
-        removing={removingArticle}
-        disabled={!eventConfigId}
-        onUpload={(file) => handleGuideUpload(
-          'instructions_article', INSTRUCTIONS_ARTICLE_FOLDER, articleInstructions, setArticleInstructions,
-          setUploadingArticle, buildInstructionsArticlePayload, file
-        )}
-        onRemove={() => handleGuideRemove('instructions_article', articleInstructions, setArticleInstructions, setRemovingArticle)}
-      />
+          <div style={cardBase}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Paiements &amp; Billetterie</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.5, flex: 1 }}>
+              Liens Kkiapay par billet, clés API et suivi des paiements.
+            </p>
+            <Link
+              href="/dashboard/admin/paiements"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#0f172a',
+                color: '#fff',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                textDecoration: 'none',
+                alignSelf: 'flex-start',
+              }}
+            >
+              Ouvrir la configuration →
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      <div style={{ background: '#ffffff', borderRadius: '12px', padding: '30px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>Paiements &amp; Billetterie</h2>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px', lineHeight: 1.6 }}>
-          La billetterie fonctionne désormais avec des <strong>liens de paiement Kkiapay par billet</strong>.
-          Créez un lien de paiement dans votre tableau de bord Kkiapay pour chaque billet,
-          puis renseignez les URL dans la page dédiée.
+      {/* Guides officiels */}
+      <section>
+        <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px' }}>
+          Documents officiels
+        </h2>
+        <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Programme PDF :{' '}
+          <a href={OFFICIAL_PUBLIC_DOCS.programme.path} target="_blank" rel="noopener noreferrer" style={{ color: '#1B6B2E', fontWeight: 600 }}>
+            {OFFICIAL_PUBLIC_DOCS.programme.fileName}
+          </a>
+          {' · '}téléchargeable depuis le tableau de bord et la page Programme.
         </p>
-        <Link
-          href="/dashboard/admin/paiements"
+        <div
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: '#111827', color: '#fff', padding: '10px 20px', borderRadius: '8px',
-            fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '16px',
+            alignItems: 'stretch',
           }}
         >
-          Configurer les liens de paiement →
-        </Link>
-      </div>
+          <GuideUploadBlock
+            title="Instructions aux auteurs"
+            description="Document officiel pour la soumission d’un résumé (défaut : PDF fourni)."
+            doc={resumeInstructions}
+            uploading={uploadingResume}
+            removing={removingResume}
+            disabled={!eventConfigId}
+            onUpload={(file) => handleGuideUpload(
+              'instructions_resume', INSTRUCTIONS_RESUME_FOLDER, resumeInstructions, setResumeInstructions,
+              setUploadingResume, buildInstructionsResumePayload, file
+            )}
+            onRemove={() => handleGuideRemove('instructions_resume', resumeInstructions, setResumeInstructions, setRemovingResume)}
+          />
+
+          <GuideUploadBlock
+            title="Guide — articles complets"
+            description="Document officiel (PDF ou Word) pour la soumission d’un article."
+            doc={articleInstructions}
+            uploading={uploadingArticle}
+            removing={removingArticle}
+            disabled={!eventConfigId}
+            onUpload={(file) => handleGuideUpload(
+              'instructions_article', INSTRUCTIONS_ARTICLE_FOLDER, articleInstructions, setArticleInstructions,
+              setUploadingArticle, buildInstructionsArticlePayload, file
+            )}
+            onRemove={() => handleGuideRemove('instructions_article', articleInstructions, setArticleInstructions, setRemovingArticle)}
+          />
+
+          <GuideUploadBlock
+            title="Critères d’évaluation"
+            description="Grille pour les évaluateurs (défaut : PDF fourni)."
+            doc={criteresEvaluation}
+            uploading={uploadingCriteres}
+            removing={removingCriteres}
+            disabled={!eventConfigId}
+            onUpload={(file) => handleGuideUpload(
+              'criteres_evaluation', CRITERES_FOLDER, criteresEvaluation, setCriteresEvaluation,
+              setUploadingCriteres, buildEvaluationCriteriaPayload, file
+            )}
+            onRemove={() => handleGuideRemove('criteres_evaluation', criteresEvaluation, setCriteresEvaluation, setRemovingCriteres)}
+          />
+        </div>
+      </section>
+
+      <CommitteeSettingsPanel />
     </div>
   );
 }

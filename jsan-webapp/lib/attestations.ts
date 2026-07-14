@@ -202,14 +202,35 @@ function normalizeInput(input: UserAttestationInput): Record<string, unknown> {
   };
 }
 
-export async function fetchAttestationSettings(supabase: SupabaseClient): Promise<AttestationSettings | null> {
-  const { data } = await supabase
+export async function fetchAttestationSettings(
+  supabase: SupabaseClient
+): Promise<{ settings: AttestationSettings | null; error: string | null }> {
+  const { data: rpcRows, error: rpcError } = await supabase.rpc('get_attestations_settings');
+  if (!rpcError && Array.isArray(rpcRows) && rpcRows.length > 0) {
+    const row = rpcRows[0] as { config_id: string; attestations_enabled: boolean };
+    return {
+      settings: {
+        id: row.config_id,
+        attestations_enabled: Boolean(row.attestations_enabled),
+      },
+      error: null,
+    };
+  }
+
+  const { data, error } = await supabase
     .from('events_config')
     .select('id, attestations_enabled')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  return (data ?? null) as AttestationSettings | null;
+
+  if (error) {
+    const parts = [error.message];
+    if (rpcError?.message) parts.unshift(`RPC: ${rpcError.message}`);
+    return { settings: null, error: parts.join(' — ') };
+  }
+
+  return { settings: (data as AttestationSettings | null) ?? null, error: null };
 }
 
 export async function updateAttestationSettings(
@@ -217,11 +238,15 @@ export async function updateAttestationSettings(
   id: string,
   enabled: boolean
 ): Promise<string | null> {
+  const { error: rpcError } = await supabase.rpc('set_attestations_enabled', { p_enabled: enabled });
+  if (!rpcError) return null;
+
   const { error } = await supabase
     .from('events_config')
     .update({ attestations_enabled: enabled })
     .eq('id', id);
-  return error?.message ?? null;
+
+  return error?.message ?? rpcError.message ?? null;
 }
 
 export async function fetchAttestationsForStaff(supabase: SupabaseClient): Promise<UserAttestation[]> {

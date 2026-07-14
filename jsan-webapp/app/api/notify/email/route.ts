@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from '@/lib/email';
 import { fetchEmailTemplateConfig, renderEmailTemplate, type EmailTemplateKey } from '@/lib/email-templates';
+import { resolveEmailCtaUrl } from '@/lib/email-template-links';
 import { DEFAULT_NOTIFICATION_PREFERENCES, mapDbRoleToAppRole, isEventStaff, type NotificationPreferences, type DbUserRole } from '@/lib/roles';
 import type { NotificationType } from '@/lib/notifications';
 
@@ -84,7 +85,14 @@ export async function POST(request: Request) {
 
   // Lien absolu pour le bouton d'action.
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim() || new URL(request.url).origin;
-  const ctaUrl = payload.link ? `${base.replace(/\/$/, '')}${payload.link}` : undefined;
+  const ctaUrl =
+    payload.link || templateKey
+      ? resolveEmailCtaUrl(base, {
+          templateKey: templateKey ?? 'account_registration',
+          variables: payload.variables,
+          overrideLink: payload.link,
+        })
+      : undefined;
   const recipientName = [profile?.prenom, profile?.nom].filter(Boolean).join(' ') || null;
 
   let finalSubject = title;

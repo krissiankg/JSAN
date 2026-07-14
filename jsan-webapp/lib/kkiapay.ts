@@ -6,38 +6,35 @@
 //   3. Le serveur vérifie la transaction via l'API Kkiapay (clé privée + secret)
 //      puis passe le billet à « Payé » — jamais depuis le navigateur (RLS).
 //
-// Toutes les clés sont lues dans les variables d'environnement, à remplir
-// plus tard depuis le tableau de bord Kkiapay.
+// Les clés peuvent venir de la table `kkiapay_settings` (admin UI) ou des
+// variables d'environnement (secours / Netlify).
 
+import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveKkiapayCredentials } from '@/lib/kkiapay-settings';
+
+/** @deprecated Préférer /api/kkiapay/public-config — conservé pour compat. */
 export function isKkiapaySandbox(): boolean {
   return (process.env.NEXT_PUBLIC_KKIAPAY_SANDBOX ?? '').toLowerCase() !== 'false';
 }
 
-/** Clé publique exposée au navigateur (widget). Vide tant que non configurée. */
+/** @deprecated Préférer /api/kkiapay/public-config */
 export function getKkiapayPublicKey(): string {
   return (process.env.NEXT_PUBLIC_KKIAPAY_PUBLIC_KEY ?? '').trim();
 }
 
-/** Le widget peut-il être utilisé côté client ? */
+/** @deprecated Préférer /api/kkiapay/public-config */
 export function isKkiapayWidgetConfigured(): boolean {
   return getKkiapayPublicKey().length > 0;
 }
 
-// --- Serveur uniquement (ne jamais importer côté client) -------------------
-
-function kkiapayApiBase(): string {
-  return isKkiapaySandbox()
-    ? 'https://api-sandbox.kkiapay.me'
-    : 'https://api.kkiapay.me';
+function kkiapayApiBase(sandbox: boolean): string {
+  return sandbox ? 'https://api-sandbox.kkiapay.me' : 'https://api.kkiapay.me';
 }
 
-/** Les clés serveur (privée + secret) sont-elles renseignées ? */
-export function isKkiapayServerConfigured(): boolean {
-  return Boolean(
-    getKkiapayPublicKey() &&
-      (process.env.KKIAPAY_PRIVATE_KEY ?? '').trim() &&
-      (process.env.KKIAPAY_SECRET ?? '').trim()
-  );
+export async function isKkiapayServerConfigured(): Promise<boolean> {
+  const admin = createAdminClient();
+  const creds = await resolveKkiapayCredentials(admin);
+  return Boolean(creds.publicKey && creds.privateKey && creds.secretKey);
 }
 
 export interface KkiapayVerification {
@@ -55,7 +52,10 @@ export interface KkiapayVerification {
 export async function verifyKkiapayTransaction(
   transactionId: string
 ): Promise<KkiapayVerification> {
-  if (!isKkiapayServerConfigured()) {
+  const admin = createAdminClient();
+  const creds = await resolveKkiapayCredentials(admin);
+
+  if (!creds.publicKey || !creds.privateKey || !creds.secretKey) {
     return { ok: false, status: null, amount: null, raw: null, error: 'Kkiapay non configuré (clés serveur manquantes).' };
   }
   if (!transactionId || typeof transactionId !== 'string') {
@@ -63,13 +63,13 @@ export async function verifyKkiapayTransaction(
   }
 
   try {
-    const res = await fetch(`${kkiapayApiBase()}/api/v1/transactions/status`, {
+    const res = await fetch(`${kkiapayApiBase(creds.sandbox)}/api/v1/transactions/status`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': getKkiapayPublicKey(),
-        'x-private-key': (process.env.KKIAPAY_PRIVATE_KEY ?? '').trim(),
-        'x-secret-key': (process.env.KKIAPAY_SECRET ?? '').trim(),
+        'x-api-key': creds.publicKey,
+        'x-private-key': creds.privateKey,
+        'x-secret-key': creds.secretKey,
       },
       body: JSON.stringify({ transactionId }),
       cache: 'no-store',
