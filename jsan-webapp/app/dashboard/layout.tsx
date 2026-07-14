@@ -442,7 +442,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             {children}
           </div>
           <footer className="dashboard-footer">
-            Journées Scientifiques de l&apos;Alimentation et de la Nutrition (JSAN) — Version 2.0
+            Journées Scientifiques de l&apos;Alimentation et de la Nutrition (JSAN)
             {' · '}
             Conçu par{' '}
             <a href="https://guelichweb.online/" target="_blank" rel="noopener noreferrer">

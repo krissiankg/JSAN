@@ -24,6 +24,7 @@ declare global {
     goToSlide: (index: number) => void;
     handleContact: (e: Event | React.FormEvent) => void;
     updatePrice: (category: string, selectElement: HTMLSelectElement) => void;
+    initJsanHomeSlider?: (opts?: { reset?: boolean }) => void;
     openKkiapayWidget?: (options: KkiapayWidgetOptions) => void;
     addSuccessListener?: (cb: (response: KkiapayCallbackResponse) => void) => void;
     addFailedListener?: (cb: (error: unknown) => void) => void;

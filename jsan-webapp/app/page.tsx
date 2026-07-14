@@ -123,28 +123,36 @@ export default function Home() {
     void loadSponsors();
   }, [supabase]);
 
+  // Ré-init le slider après les re-renders React (sponsors / auth), sinon flèches + menu cassent
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      window.initJsanHomeSlider?.({ reset: false });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [sponsors, isLoggedIn, registrationsOpen]);
+
   return (
     <>
-      <Script src="/script.js" strategy="lazyOnload" />
+      <Script src="/script.js" strategy="afterInteractive" onLoad={() => window.initJsanHomeSlider?.({ reset: true })} />
       
 
   {/* ===== NAVBAR ===== */}
   <nav className="navbar" id="navbar">
     <div className="container">
-      <Link href="#" className="navbar-brand">
+      <a href="#accueil" className="navbar-brand">
         <img src="/media/media_library/logo-jsan.png" alt="SNB Logo" className="navbar-logo-img" style={{"height":"50px","width":"auto","maxWidth":"200px","objectFit":"contain","flexShrink":"0"}} />
-      </Link>
+      </a>
       <div className="nav-links" id="navLinks">
-        <Link href="#accueil" className="active">Accueil</Link>
-        <Link href="#intro">JSAN</Link>
-        <Link href="#apropos">À Propos</Link>
-        <Link href="#objectifs">Thématiques</Link>
-        <Link href="#programme">Programme</Link>
-        <Link href="#participer">Participer</Link>
-        <Link href="#tarifs">Tarifs</Link>
-        <Link href="#partenaires">Partenaires</Link>
+        <a href="#accueil" className="active">Accueil</a>
+        <a href="#intro">JSAN</a>
+        <a href="#apropos">À Propos</a>
+        <a href="#objectifs">Thématiques</a>
+        <a href="#programme">Programme</a>
+        <a href="#participer">Participer</a>
+        <a href="#tarifs">Tarifs</a>
+        <a href="#partenaires">Partenaires</a>
         <Link href="/blog">Blog</Link>
-        <Link href="#faq">FAQ</Link>
+        <a href="#faq">FAQ</a>
         <div className="nav-cta-mobile hidden-desktop">
           {isLoggedIn ? (
             <Link href="/dashboard" className="btn btn-primary">Tableau de bord</Link>
@@ -722,7 +730,7 @@ export default function Home() {
   <div className="global-bottom-bar">
     <div className="container bottom-bar-container">
       <span className="copyright hidden-mobile">
-        © {new Date().getFullYear()} SNB · JSAN — Version 2.0 · Conçu par{' '}
+        © {new Date().getFullYear()} SNB · JSAN · Conçu par{' '}
         <a href="https://guelichweb.online/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
           Guelichweb
         </a>
@@ -774,7 +782,20 @@ export default function Home() {
           {newsletterNotice.text}
         </span>
       )}
-      <Link href="#faq" className="bottom-contact-link" onClick={(e) => window.goToSlide(9)}>Contact</Link>
+      <a
+        href="#faq"
+        className="bottom-contact-link"
+        onClick={(e) => {
+          e.preventDefault();
+          const slides = Array.from(
+            document.querySelectorAll('#slider-wrapper > section, #slider-wrapper > footer')
+          );
+          const idx = slides.findIndex((s) => s.id === 'faq');
+          window.goToSlide?.(idx >= 0 ? idx : slides.length - 1);
+        }}
+      >
+        Contact
+      </a>
     </div>
   </div>
 
