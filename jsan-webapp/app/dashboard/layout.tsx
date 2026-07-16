@@ -102,6 +102,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     case '/dashboard/admin/check-in': pageTitle = "Check-in jour J"; break;
     case '/dashboard/admin/inscriptions': pageTitle = "Inscriptions & Participants"; break;
     case '/dashboard/admin/paiements': pageTitle = "Paiements & Billetterie"; break;
+    case '/dashboard/admin/billets': pageTitle = "Catalogue des billets"; break;
     case '/dashboard/admin/sponsors': pageTitle = "Sponsors & Partenaires"; break;
     case '/dashboard/admin/emails': pageTitle = "E-mails & Annonces"; break;
     case '/dashboard/admin/blog': pageTitle = "Blog & Newsletter"; break;
@@ -384,6 +385,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       </Link>
                       <Link href="/dashboard/admin/paiements" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.85rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                         <span style={{ fontSize: '14px' }}>💳</span> Paiements
+                      </Link>
+                      <Link href="/dashboard/admin/billets" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.85rem', borderRadius: '8px', transition: 'background 0.2s' }}>
+                        <span style={{ fontSize: '14px' }}>🎟️</span> Catalogue billets
                       </Link>
                       <Link href="/dashboard/admin/sponsors" onClick={() => setIsProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', color: '#475569', textDecoration: 'none', fontSize: '0.85rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                         <span style={{ fontSize: '14px' }}>🤝</span> Sponsors

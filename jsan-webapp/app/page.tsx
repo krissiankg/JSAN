@@ -6,12 +6,15 @@ import CustomSelect from '../components/CustomSelect';
 import { useAuth } from './AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { fetchSponsors, getSponsorLogoUrl, groupSponsorsByLevel, SPONSOR_LEVEL_COLORS, type EventSponsor } from '@/lib/sponsors';
-import { TICKET_CATALOG } from '@/lib/tickets';
+import { fetchTicketCatalog, TICKET_CATALOG, type TicketCatalogItem } from '@/lib/tickets';
 import { useRegistrationsOpen } from '@/hooks/use-registrations-open';
+import { useTicketsSalesStatus } from '@/hooks/use-tickets-sales-open';
+import TicketCardImage from '@/components/TicketCardImage';
 
 export default function Home() {
   const { isLoggedIn, isStudentVerified, isMemberVerified } = useAuth();
   const registrationsOpen = useRegistrationsOpen();
+  const { open: ticketsSalesOpen, message: ticketsSalesClosedMessage } = useTicketsSalesStatus();
   const supabase = useMemo(() => createClient(), []);
   const [customAlert, setCustomAlert] = useState<{ show: boolean, message: string, action?: () => void }>({ show: false, message: '' });
   const [newsletterEmail, setNewsletterEmail] = useState('');
@@ -23,18 +26,52 @@ export default function Home() {
   const [contactLoading, setContactLoading] = useState(false);
   const [contactNotice, setContactNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [sponsors, setSponsors] = useState<EventSponsor[]>([]);
-  const tickets = TICKET_CATALOG;
+  const [tickets, setTickets] = useState<TicketCatalogItem[]>(TICKET_CATALOG);
 
-  const handleBuyKkiapay = (ticketTitle: string) => {
+  const handleBuyKkiapay = (ticket: TicketCatalogItem) => {
+    // Ventes fermées : inscription compte possible, pas de paiement
+    if (ticketsSalesOpen === false) {
+      if (!isLoggedIn) {
+        if (registrationsOpen === false) {
+          setCustomAlert({
+            show: true,
+            message: 'Les inscriptions et la billetterie sont actuellement fermées.',
+          });
+          return;
+        }
+        window.location.href = '/register';
+        return;
+      }
+      setCustomAlert({
+        show: true,
+        message:
+          ticketsSalesClosedMessage ||
+          'La billetterie est fermée. Les paiements ne sont pas disponibles pour le moment.',
+        action: () => {
+          window.location.href = '/dashboard/billetterie';
+        },
+      });
+      return;
+    }
+
     if (!isLoggedIn) {
+      if (registrationsOpen === false) {
+        window.location.href = '/login?role=participant';
+        return;
+      }
       window.location.href = '/login?role=participant';
       return;
     }
 
-    const isStudentTicket = ticketTitle.toLowerCase().includes('étudiant');
-    const isMemberTicket = ticketTitle.toLowerCase().includes('membre snb');
+    if (ticket.purchaseAvailable === false) {
+      setCustomAlert({
+        show: true,
+        message: ticket.purchaseBlockedReason || 'Ce billet n’est pas disponible à l’achat.',
+      });
+      return;
+    }
 
-    if (isStudentTicket && !isStudentVerified) {
+    if (ticket.requiresStudent && !isStudentVerified) {
       setCustomAlert({
         show: true, 
         message: "Ce ticket est réservé aux étudiants. Veuillez uploader et faire valider votre carte d'étudiant dans votre Profil avant de procéder à l'achat.",
@@ -43,7 +80,7 @@ export default function Home() {
       return;
     }
 
-    if (isMemberTicket && !isMemberVerified) {
+    if (ticket.requiresMember && !isMemberVerified) {
       setCustomAlert({
         show: true, 
         message: "Ce ticket est réservé aux membres de la SNB. Veuillez uploader et faire valider votre attestation de membre dans votre Profil avant de procéder à l'achat.",
@@ -52,8 +89,7 @@ export default function Home() {
       return;
     }
 
-    // Le paiement se fait dans la billetterie du dashboard (liens Kkiapay par billet).
-    window.location.href = '/dashboard/billetterie';
+    window.location.href = `/dashboard/billetterie?ticket=${encodeURIComponent(ticket.id)}`;
   };
 
   const handleNewsletterSubscribe = async () => {
@@ -116,11 +152,15 @@ export default function Home() {
   };
 
   useEffect(() => {
-    async function loadSponsors() {
-      const rows = await fetchSponsors(supabase, { activeOnly: true });
-      setSponsors(rows);
+    async function loadPublicData() {
+      const [sponsorRows, ticketRows] = await Promise.all([
+        fetchSponsors(supabase, { activeOnly: true }),
+        fetchTicketCatalog(supabase, { activeOnly: true }),
+      ]);
+      setSponsors(sponsorRows);
+      setTickets(ticketRows);
     }
-    void loadSponsors();
+    void loadPublicData();
   }, [supabase]);
 
   // Ré-init le slider après les re-renders React (sponsors / auth), sinon flèches + menu cassent
@@ -129,7 +169,7 @@ export default function Home() {
       window.initJsanHomeSlider?.({ reset: false });
     }, 50);
     return () => window.clearTimeout(t);
-  }, [sponsors, isLoggedIn, registrationsOpen]);
+  }, [sponsors, tickets, isLoggedIn, registrationsOpen]);
 
   return (
     <>
@@ -499,8 +539,8 @@ export default function Home() {
           <div key={ticket.id} style={{ background: 'white', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
             {/* Image Card */}
             <div style={{ height: '180px', position: 'relative' }}>
-              <img src={ticket.img} alt={ticket.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <span style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(255,255,255,0.9)', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, color: '#334155' }}>
+              <TicketCardImage src={ticket.img} alt={ticket.title} height={180} sizes="(max-width: 640px) 100vw, 33vw" />
+              <span style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(255,255,255,0.9)', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, color: '#334155', zIndex: 1 }}>
                 {ticket.category}
               </span>
             </div>
@@ -513,10 +553,14 @@ export default function Home() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                 <span style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b' }}>{ticket.price}</span>
                 <button 
-                  onClick={() => handleBuyKkiapay(ticket.title)}
+                  onClick={() => handleBuyKkiapay(ticket)}
                   style={{ background: '#0f172a', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s' }}
                 >
-                  Acheter
+                  {ticketsSalesOpen === false && !isLoggedIn
+                    ? "S'inscrire"
+                    : ticket.purchaseAvailable === false
+                      ? 'Indisponible'
+                      : 'Acheter'}
                 </button>
               </div>
             </div>
@@ -730,7 +774,7 @@ export default function Home() {
   <div className="global-bottom-bar">
     <div className="container bottom-bar-container">
       <span className="copyright hidden-mobile">
-        © {new Date().getFullYear()} SNB · JSAN · Conçu par{' '}
+        © 2025 SNB · JSAN · Conçu par{' '}
         <a href="https://guelichweb.online/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
           Guelichweb
         </a>

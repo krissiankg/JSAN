@@ -9,10 +9,10 @@ import {
   type BadgeTicket,
   fetchMyPaidBadges,
   formatCheckInAt,
-  qrImageUrl,
   shortBadgeCode,
 } from '@/lib/check-in';
 import { getDisplayName } from '@/lib/dashboard-welcome';
+import BadgeQrCode from '@/components/BadgeQrCode';
 
 export default function BadgePage() {
   const { user, profile } = useAuth();
@@ -44,22 +44,64 @@ export default function BadgePage() {
   }, [user, supabase]);
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '12px 4px 40px' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px', color: '#0f172a' }}>Mon badge</h1>
-      <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 20px', lineHeight: 1.5 }}>
-        Présentez le QR code à l&apos;entrée du congrès. Un billet payé = un badge.
-      </p>
+    <div className="badge-page" style={{ maxWidth: 720, margin: '0 auto', padding: '12px 4px 40px' }}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .badge-page, .badge-page * { visibility: visible !important; }
+          .badge-page {
+            position: absolute !important;
+            left: 0; top: 0; width: 100%;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .badge-no-print { display: none !important; }
+          .badge-card {
+            break-inside: avoid;
+            box-shadow: none !important;
+            border: 1px solid #cbd5e1 !important;
+            margin-bottom: 16px !important;
+          }
+        }
+      `}</style>
+
+      <div className="badge-no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px', color: '#0f172a' }}>Mon badge</h1>
+          <p style={{ color: '#64748b', fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+            Présentez le QR code à l&apos;entrée. Un billet payé = un badge.
+          </p>
+        </div>
+        {tickets.length > 0 && (
+          <button
+            type="button"
+            onClick={() => window.print()}
+            style={{
+              background: '#0f172a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            Imprimer / PDF
+          </button>
+        )}
+      </div>
 
       {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 16, fontSize: 14 }}>
+        <div className="badge-no-print" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 16, fontSize: 14 }}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <p style={{ color: '#94a3b8' }}>Chargement…</p>
+        <p className="badge-no-print" style={{ color: '#94a3b8' }}>Chargement…</p>
       ) : tickets.length === 0 ? (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 28, textAlign: 'center' }}>
+        <div className="badge-no-print" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 28, textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>🎫</div>
           <p style={{ color: '#64748b', margin: '0 0 14px' }}>Aucun billet payé pour générer un badge.</p>
           <Link href="/dashboard/billetterie" style={{ color: '#1B6B2E', fontWeight: 600, textDecoration: 'none' }}>
@@ -75,6 +117,7 @@ export default function BadgePage() {
             return (
               <div
                 key={ticket.id}
+                className="badge-card"
                 style={{
                   background: '#fff',
                   border: '1px solid #e2e8f0',
@@ -110,13 +153,7 @@ export default function BadgePage() {
                 </div>
 
                 <div style={{ padding: 20, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <img
-                    src={qrImageUrl(qrPayload, 200)}
-                    alt={`QR badge ${code}`}
-                    width={200}
-                    height={200}
-                    style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff' }}
-                  />
+                  <BadgeQrCode payload={qrPayload} size={200} alt={`QR badge ${code}`} />
                   <div style={{ minWidth: 180 }}>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Code manuel</div>
                     <div

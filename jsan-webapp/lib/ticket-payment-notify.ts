@@ -7,6 +7,7 @@ interface TicketRow {
   id: string;
   user_id: string;
   type_billet: string;
+  ticket_type_id?: string | null;
   montant: number | null;
   transaction_id_kkiapay: string | null;
 }
@@ -15,15 +16,34 @@ function formatMontant(montant: number | null): string {
   return montant != null ? `${Number(montant).toLocaleString('fr-FR')} FCFA` : '';
 }
 
-async function resolvePaymentLink(typeBillet: string): Promise<string | null> {
+async function resolvePaymentLink(
+  ticket: Pick<TicketRow, 'type_billet' | 'ticket_type_id'>
+): Promise<string | null> {
   const admin = createAdminClient();
-  const { data } = await admin.from('events_config').select('ticket_payment_links').limit(1).maybeSingle();
-  if (!data?.ticket_payment_links || typeof data.ticket_payment_links !== 'object') return null;
+  const { data: config } = await admin
+    .from('events_config')
+    .select('ticket_payment_links')
+    .limit(1)
+    .maybeSingle();
+  if (!config?.ticket_payment_links || typeof config.ticket_payment_links !== 'object') return null;
 
-  const links = data.ticket_payment_links as TicketPaymentLinks;
-  const catalogItem = TICKET_CATALOG.find((t) => t.title === typeBillet);
-  if (!catalogItem) return null;
-  return links[catalogItem.id]?.trim() || null;
+  const links = config.ticket_payment_links as TicketPaymentLinks;
+
+  let ticketId = ticket.ticket_type_id ?? null;
+  if (!ticketId) {
+    const { data: byTitle } = await admin
+      .from('ticket_types')
+      .select('id')
+      .eq('title', ticket.type_billet)
+      .maybeSingle();
+    ticketId =
+      (byTitle?.id as string | undefined) ??
+      TICKET_CATALOG.find((t) => t.title === ticket.type_billet)?.id ??
+      null;
+  }
+
+  if (!ticketId) return null;
+  return links[ticketId]?.trim() || null;
 }
 
 export async function sendTicketPaymentEmailServer(
@@ -31,7 +51,7 @@ export async function sendTicketPaymentEmailServer(
   kind: 'payment_confirmed' | 'payment_failed'
 ): Promise<void> {
   const admin = createAdminClient();
-  const paymentLink = await resolvePaymentLink(ticket.type_billet);
+  const paymentLink = await resolvePaymentLink(ticket);
   const montant = formatMontant(ticket.montant);
 
   if (kind === 'payment_confirmed') {

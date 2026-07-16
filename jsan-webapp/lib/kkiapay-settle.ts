@@ -28,7 +28,7 @@ export async function settleTicketPayment(
 
   const { data: ticket, error: fetchErr } = await admin
     .from('tickets_registrations')
-    .select('id, user_id, type_billet, montant, statut_paiement, transaction_id_kkiapay')
+    .select('id, user_id, type_billet, ticket_type_id, montant, statut_paiement, transaction_id_kkiapay')
     .eq('id', ticketId)
     .maybeSingle();
 
@@ -54,6 +54,7 @@ export async function settleTicketPayment(
             id: ticket.id,
             user_id: ticket.user_id,
             type_billet: ticket.type_billet,
+            ticket_type_id: ticket.ticket_type_id,
             montant: ticket.montant,
             transaction_id_kkiapay: transactionId,
           },
@@ -78,7 +79,11 @@ export async function settleTicketPayment(
 
   const { error: updateErr } = await admin
     .from('tickets_registrations')
-    .update({ statut_paiement: 'Paye', transaction_id_kkiapay: transactionId })
+    .update({
+      statut_paiement: 'Paye',
+      transaction_id_kkiapay: transactionId,
+      badge_token: crypto.randomUUID(),
+    })
     .eq('id', ticketId);
 
   if (updateErr) return { ok: false, status: 'erreur', message: updateErr.message };
@@ -89,6 +94,7 @@ export async function settleTicketPayment(
         id: ticket.id,
         user_id: ticket.user_id,
         type_billet: ticket.type_billet,
+        ticket_type_id: ticket.ticket_type_id,
         montant: ticket.montant,
         transaction_id_kkiapay: transactionId,
       },

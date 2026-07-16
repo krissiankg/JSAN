@@ -14,6 +14,7 @@ export interface StatutRow {
 }
 export interface TicketRow {
   type_billet: string;
+  ticket_type_id?: string | null;
   montant: number | null;
   statut_paiement: string;
   created_at: string;
@@ -37,7 +38,7 @@ export async function fetchReportsData(supabase: SupabaseClient): Promise<Report
     supabase.from('abstracts').select('statut, thematique, created_at'),
     supabase.from('full_articles').select('statut'),
     supabase.from('reviews').select('statut'),
-    supabase.from('tickets_registrations').select('type_billet, montant, statut_paiement, created_at'),
+    supabase.from('tickets_registrations').select('type_billet, ticket_type_id, montant, statut_paiement, created_at'),
     supabase.from('users_profile').select('role, institution, pays'),
   ]);
 
@@ -194,14 +195,21 @@ export function paymentsByStatus(data: ReportsData): ChartDatum[] {
   return toChartData(countBy(data.tickets, (t) => t.statut_paiement), PAYMENT_LABELS);
 }
 
-/** Revenus (billets payés) agrégés par type de billet. */
+/** Revenus (billets payés) agrégés par type de billet (id catalogue si présent). */
 export function revenueByTicket(data: ReportsData): ChartDatum[] {
-  const map = new Map<string, number>();
+  const map = new Map<string, { label: string; value: number }>();
   for (const t of data.tickets) {
     if (t.statut_paiement !== 'Paye') continue;
-    map.set(t.type_billet, (map.get(t.type_billet) ?? 0) + (Number(t.montant) || 0));
+    const key = t.ticket_type_id || t.type_billet;
+    const prev = map.get(key);
+    map.set(key, {
+      label: t.type_billet,
+      value: (prev?.value ?? 0) + (Number(t.montant) || 0),
+    });
   }
-  return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  return [...map.values()]
+    .map(({ label, value }) => ({ name: label, value }))
+    .sort((a, b) => b.value - a.value);
 }
 
 /** Profils avec institution renseignée, top N. */

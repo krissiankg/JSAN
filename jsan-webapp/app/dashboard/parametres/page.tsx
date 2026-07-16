@@ -34,6 +34,10 @@ import {
   updateRegistrationsSettings,
 } from '@/lib/registrations';
 import {
+  DEFAULT_TICKETS_SALES_CLOSED_MESSAGE,
+  updateTicketsSalesSettings,
+} from '@/lib/ticket-sales';
+import {
   fetchAttestationSettings,
   updateAttestationSettings,
 } from '@/lib/attestations';
@@ -279,6 +283,11 @@ export default function ParametresPage() {
     DEFAULT_REGISTRATIONS_CLOSED_MESSAGE
   );
   const [registrationsSaving, setRegistrationsSaving] = useState(false);
+  const [ticketsSalesOpen, setTicketsSalesOpen] = useState(true);
+  const [ticketsSalesClosedMessage, setTicketsSalesClosedMessage] = useState(
+    DEFAULT_TICKETS_SALES_CLOSED_MESSAGE
+  );
+  const [ticketsSalesSaving, setTicketsSalesSaving] = useState(false);
   const [attestationsEnabled, setAttestationsEnabled] = useState(false);
   const [attestationsSaving, setAttestationsSaving] = useState(false);
   const [doubleBlindEnabled, setDoubleBlindEnabledState] = useState(true);
@@ -288,7 +297,7 @@ export default function ParametresPage() {
     async function load() {
       const { data } = await supabase
         .from('events_config')
-        .select('id, documents_config, maintenance_mode, maintenance_message, registrations_open, registrations_closed_message, double_aveugle_actif')
+        .select('id, documents_config, maintenance_mode, maintenance_message, registrations_open, registrations_closed_message, tickets_sales_open, tickets_sales_closed_message, double_aveugle_actif')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -303,6 +312,11 @@ export default function ParametresPage() {
         setRegistrationsOpen(data.registrations_open !== false);
         setRegistrationsClosedMessage(
           data.registrations_closed_message?.trim() || DEFAULT_REGISTRATIONS_CLOSED_MESSAGE
+        );
+        setTicketsSalesOpen((data as { tickets_sales_open?: boolean }).tickets_sales_open !== false);
+        setTicketsSalesClosedMessage(
+          (data as { tickets_sales_closed_message?: string | null }).tickets_sales_closed_message?.trim() ||
+            DEFAULT_TICKETS_SALES_CLOSED_MESSAGE
         );
         setDoubleBlindEnabledState(data.double_aveugle_actif !== false);
       }
@@ -492,6 +506,45 @@ export default function ParametresPage() {
       return;
     }
     setGuideMessage({ type: 'success', text: 'Message d’inscriptions fermées enregistré.' });
+  };
+
+  const handleTicketsSalesToggle = async () => {
+    if (!eventConfigId) return;
+    setTicketsSalesSaving(true);
+    setGuideMessage(null);
+    const next = !ticketsSalesOpen;
+    const err = await updateTicketsSalesSettings(supabase, eventConfigId, {
+      open: next,
+      message: ticketsSalesClosedMessage,
+    });
+    setTicketsSalesSaving(false);
+    if (err) {
+      setGuideMessage({ type: 'error', text: err });
+      return;
+    }
+    setTicketsSalesOpen(next);
+    setGuideMessage({
+      type: 'success',
+      text: next
+        ? 'Billetterie ouverte — les paiements sont possibles.'
+        : 'Billetterie fermée — inscription compte possible, paiements bloqués.',
+    });
+  };
+
+  const handleTicketsSalesMessageSave = async () => {
+    if (!eventConfigId) return;
+    setTicketsSalesSaving(true);
+    setGuideMessage(null);
+    const err = await updateTicketsSalesSettings(supabase, eventConfigId, {
+      open: ticketsSalesOpen,
+      message: ticketsSalesClosedMessage,
+    });
+    setTicketsSalesSaving(false);
+    if (err) {
+      setGuideMessage({ type: 'error', text: err });
+      return;
+    }
+    setGuideMessage({ type: 'success', text: 'Message billetterie fermée enregistré.' });
   };
 
   const handleAttestationsToggle = async () => {
@@ -685,6 +738,50 @@ export default function ParametresPage() {
               Enregistrer le message
             </button>
           </div>
+
+          <div
+            style={{
+              ...cardBase,
+              background: ticketsSalesOpen ? '#fff' : '#fffbeb',
+              border: `1px solid ${ticketsSalesOpen ? '#e2e8f0' : '#fde68a'}`,
+            }}
+          >
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Billetterie / paiements</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Fermez les ventes sans empêcher la création de compte. Sur l’accueil, le bouton mène à l’inscription ; le paiement reste bloqué.
+            </p>
+
+            <StatusToggleRow
+              active={ticketsSalesOpen}
+              activeLabel="Ventes ouvertes"
+              inactiveLabel="Ventes fermées"
+              activeHint="Acheter ouvre la billetterie et le paiement."
+              inactiveHint="Les visiteurs peuvent s’inscrire ; le paiement est désactivé."
+              activeBtn="Fermer les ventes"
+              inactiveBtn="Ouvrir les ventes"
+              busy={ticketsSalesSaving}
+              disabled={!eventConfigId}
+              onToggle={handleTicketsSalesToggle}
+            />
+
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              Message si billetterie fermée
+            </label>
+            <textarea
+              value={ticketsSalesClosedMessage}
+              onChange={(e) => setTicketsSalesClosedMessage(e.target.value)}
+              rows={3}
+              style={textareaStyle}
+            />
+            <button
+              type="button"
+              disabled={!eventConfigId || ticketsSalesSaving}
+              onClick={handleTicketsSalesMessageSave}
+              style={saveBtnStyle(ticketsSalesSaving)}
+            >
+              Enregistrer le message
+            </button>
+          </div>
         </div>
       </section>
 
@@ -755,24 +852,45 @@ export default function ParametresPage() {
             <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.5, flex: 1 }}>
               Liens Kkiapay par billet, clés API et suivi des paiements.
             </p>
-            <Link
-              href="/dashboard/admin/paiements"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#0f172a',
-                color: '#fff',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                textDecoration: 'none',
-                alignSelf: 'flex-start',
-              }}
-            >
-              Ouvrir la configuration →
-            </Link>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <Link
+                href="/dashboard/admin/paiements"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#0f172a',
+                  color: '#fff',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                Ouvrir la configuration →
+              </Link>
+              <Link
+                href="/dashboard/admin/billets"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'transparent',
+                  color: '#0f172a',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                  border: '1px solid #cbd5e1',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                Catalogue billets →
+              </Link>
+            </div>
           </div>
         </div>
       </section>

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { isEventStaff } from '@/lib/roles';
 import { renderNotificationEmail } from '@/lib/email';
 import { fetchEmailCampaignLogs, type EmailCampaignLog } from '@/lib/email-history';
-import { TICKET_CATALOG } from '@/lib/tickets';
+import { TICKET_CATALOG, fetchTicketCatalog, type TicketCatalogItem } from '@/lib/tickets';
 import {
   EMAIL_TEMPLATE_CATEGORY_LABELS,
   EMAIL_TEMPLATE_DEFINITIONS,
@@ -49,6 +49,7 @@ export default function AdminEmailsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [history, setHistory] = useState<EmailCampaignLog[]>([]);
+  const [catalog, setCatalog] = useState<TicketCatalogItem[]>(TICKET_CATALOG);
   const [announcementAudience, setAnnouncementAudience] = useState<BroadcastAudience>('all');
   const [announcementNote, setAnnouncementNote] = useState('');
   const [announcementLink, setAnnouncementLink] = useState('/dashboard/programme');
@@ -67,13 +68,15 @@ export default function AdminEmailsPage() {
     async function load() {
       if (!isEventStaff(userRole)) return;
       setLoading(true);
-      const [config, logs] = await Promise.all([
+      const [config, logs, catalogRows] = await Promise.all([
         fetchEmailTemplateConfig(supabase),
         fetchEmailCampaignLogs(supabase).catch(() => []),
+        fetchTicketCatalog(supabase, { activeOnly: false }),
       ]);
       setConfigId(config?.id ?? null);
       setTemplates(config?.email_templates ?? null);
       setHistory(logs);
+      setCatalog(catalogRows);
       setLoading(false);
     }
     void load();
@@ -356,8 +359,8 @@ export default function AdminEmailsPage() {
             <label style={labelStyle}>Type de billet</label>
             <select style={inputStyle} value={announcementTicketType} onChange={(e) => setAnnouncementTicketType(e.target.value)}>
               <option value="">Tous les billets</option>
-              {TICKET_CATALOG.map((ticket) => (
-                <option key={ticket.id} value={ticket.title}>{ticket.title}</option>
+              {catalog.map((ticket) => (
+                <option key={ticket.id} value={ticket.id}>{ticket.title}</option>
               ))}
             </select>
           </div>

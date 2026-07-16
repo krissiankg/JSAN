@@ -420,6 +420,26 @@ export async function notifyPaymentFailed(
   });
 }
 
+export async function notifyCheckInSuccess(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { typeBillet: string; checkedInAt: string }
+): Promise<void> {
+  const when = new Date(input.checkedInAt).toLocaleString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  await createNotification(supabase, {
+    userId,
+    type: 'billetterie',
+    title: 'Entrée validée',
+    body: `Votre entrée pour « ${input.typeBillet} » a été validée le ${when}.`,
+    link: '/dashboard/badge',
+  });
+}
+
 export async function notifyAttestationAvailable(
   supabase: SupabaseClient,
   userId: string,

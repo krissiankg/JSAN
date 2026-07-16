@@ -110,7 +110,7 @@ export async function fetchCommitteeMembers(
   }
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => normalizeMember(row as Record<string, unknown>));
+  return (data ?? []).map((row) => normalizeMember(row as unknown as Record<string, unknown>));
 }
 
 export function groupCommitteeMembers(members: CommitteeMember[]) {

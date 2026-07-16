@@ -7,12 +7,15 @@ import { isEventStaff } from '@/lib/roles';
 import type { KkiapayAdminView } from '@/lib/kkiapay-settings';
 import {
   TICKET_CATALOG,
+  type TicketCatalogItem,
   type TicketPaymentLinks,
   type TicketRegistration,
   type PaymentStatus,
+  fetchTicketCatalog,
   formatFcfa,
   isValidPaymentUrl,
   parseTicketPaymentLinks,
+  pruneTicketPaymentLinks,
   paymentStatusColor,
   paymentStatusLabel,
 } from '@/lib/tickets';
@@ -25,6 +28,7 @@ export default function AdminPaiements() {
   const [eventConfigId, setEventConfigId] = useState<string | null>(null);
   const [links, setLinks] = useState<TicketPaymentLinks>({});
   const [transactions, setTransactions] = useState<TicketRegistration[]>([]);
+  const [catalog, setCatalog] = useState<TicketCatalogItem[]>(TICKET_CATALOG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
@@ -49,9 +53,10 @@ export default function AdminPaiements() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [configRes, txRes] = await Promise.all([
+    const [configRes, txRes, catalogRows] = await Promise.all([
       supabase.from('events_config').select('id, ticket_payment_links').limit(1).maybeSingle(),
       supabase.from('tickets_registrations').select('*').order('created_at', { ascending: false }),
+      fetchTicketCatalog(supabase, { activeOnly: false }),
       loadKkiapayConfig(),
     ]);
 
@@ -59,6 +64,7 @@ export default function AdminPaiements() {
       setEventConfigId(configRes.data.id);
       setLinks(parseTicketPaymentLinks(configRes.data.ticket_payment_links));
     }
+    setCatalog(catalogRows);
     setTransactions((txRes.data ?? []) as TicketRegistration[]);
     setLoading(false);
   }, [supabase, loadKkiapayConfig]);
@@ -142,7 +148,7 @@ export default function AdminPaiements() {
 
     const invalid = Object.entries(links).find(([, url]) => url.trim() && !isValidPaymentUrl(url));
     if (invalid) {
-      setMessage({ type: 'error', text: `Lien invalide pour « ${TICKET_CATALOG.find((t) => t.id === invalid[0])?.title ?? invalid[0]} ». Utilisez une URL https.` });
+      setMessage({ type: 'error', text: `Lien invalide pour « ${catalog.find((t) => t.id === invalid[0])?.title ?? invalid[0]} ». Utilisez une URL https.` });
       return;
     }
 
@@ -150,8 +156,9 @@ export default function AdminPaiements() {
     setMessage(null);
 
     const cleaned: TicketPaymentLinks = {};
+    const validIds = new Set(catalog.map((t) => t.id));
     for (const [id, url] of Object.entries(links)) {
-      if (url.trim()) cleaned[id] = url.trim();
+      if (url.trim() && validIds.has(id)) cleaned[id] = url.trim();
     }
 
     const { error } = await supabase
@@ -165,15 +172,20 @@ export default function AdminPaiements() {
       return;
     }
     setLinks(cleaned);
-    setMessage({ type: 'success', text: 'Liens de paiement enregistrés.' });
+    await pruneTicketPaymentLinks(supabase, catalog.map((t) => t.id));
+    setMessage({ type: 'success', text: 'Liens de paiement enregistrés (orphelins retirés).' });
     setTimeout(() => setMessage(null), 3000);
   };
 
   const updateTransactionStatus = async (id: string, statut: PaymentStatus) => {
     const ticket = transactions.find((t) => t.id === id);
+    const payload: Record<string, unknown> = { statut_paiement: statut };
+    if (statut === 'Paye') {
+      payload.badge_token = crypto.randomUUID();
+    }
     const { error } = await supabase
       .from('tickets_registrations')
-      .update({ statut_paiement: statut })
+      .update(payload)
       .eq('id', id);
 
     if (error) {
@@ -204,11 +216,31 @@ export default function AdminPaiements() {
 
   return (
     <div className="page-shell page-shell--narrow" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Paiements &amp; Billetterie</h1>
-        <p style={{ color: '#64748b', fontSize: '14px', margin: 0, lineHeight: 1.6 }}>
-          Configurez le paiement automatique Kkiapay (clés API) et/ou les liens de paiement manuels par billet.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Paiements &amp; Billetterie</h1>
+          <p style={{ color: '#64748b', fontSize: '14px', margin: 0, lineHeight: 1.6 }}>
+            Configurez le paiement automatique Kkiapay (clés API) et/ou les liens de paiement manuels par billet.
+          </p>
+        </div>
+        <a
+          href="/dashboard/admin/billets"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+            color: '#0f172a',
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: '13px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Catalogue billets →
+        </a>
       </div>
 
       <div style={{
@@ -364,7 +396,7 @@ export default function AdminPaiements() {
             </p>
           </div>
           <span style={{ fontSize: '13px', color: '#64748b' }}>
-            {configuredCount}/{TICKET_CATALOG.length} configurés
+            {configuredCount}/{catalog.length} configurés
           </span>
         </div>
 
@@ -372,7 +404,7 @@ export default function AdminPaiements() {
           <p style={{ color: '#94a3b8' }}>Chargement…</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {TICKET_CATALOG.map((ticket) => {
+            {catalog.map((ticket) => {
               const url = links[ticket.id] ?? '';
               const ok = url.trim() && isValidPaymentUrl(url);
               return (

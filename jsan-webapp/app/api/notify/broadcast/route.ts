@@ -96,14 +96,22 @@ export async function POST(request: Request) {
 
   let paidUserIds = new Set<string>();
   if (filters?.paidOnly || filters?.ticketType) {
-    const query = admin.from('tickets_registrations').select('user_id, type_billet').eq('statut_paiement', 'Paye');
-    if (filters?.ticketType?.trim()) {
-      query.eq('type_billet', filters.ticketType.trim());
-    }
-    const { data: tickets } = await query;
-    paidUserIds = new Set(
-      ((tickets ?? []) as Array<{ user_id: string | null }>).map((row) => row.user_id).filter(Boolean) as string[]
-    );
+    const filterValue = filters?.ticketType?.trim() ?? '';
+    const { data: tickets } = await admin
+      .from('tickets_registrations')
+      .select('user_id, type_billet, ticket_type_id')
+      .eq('statut_paiement', 'Paye');
+
+    const rows = ((tickets ?? []) as Array<{
+      user_id: string | null;
+      type_billet: string | null;
+      ticket_type_id: string | null;
+    }>).filter((row) => {
+      if (!filterValue) return true;
+      return row.ticket_type_id === filterValue || row.type_billet === filterValue;
+    });
+
+    paidUserIds = new Set(rows.map((row) => row.user_id).filter(Boolean) as string[]);
   }
 
   const directUserIds = filters?.userIds?.length ? new Set(filters.userIds) : null;
